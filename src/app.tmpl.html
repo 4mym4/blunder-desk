@@ -479,27 +479,47 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
   .tabs button { min-height: 44px; padding-inline: 15px; }
 }
 
-/* ---------- narrow: board on top, sheet as a strip, analysis below ---------- */
+/* ---------- narrow: sheet beside the board, analysis below both ----------
+   Stacking the sheet under the board cost a band of height the analysis
+   needed, so every move meant scrolling to read the verdict. Beside the
+   board it costs width instead, which a portrait phone has to spare and
+   the board can give up: the sheet rules vertically in the gutter the
+   square leaves, and the answer sits on screen under both. */
 @media (max-width: 900px) {
   .review-grid {
-    grid-template-areas: "board" "sheet" "analysis";
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "board sheet" "bar bar" "analysis analysis";
+    grid-template-columns: minmax(0, 1fr) 140px;
     grid-template-rows: auto auto minmax(0, 1fr);
     gap: 10px;
   }
-  /* A square board capped by height, so the strip and the analysis below
-     it always have room. Sized, not stretched, here — and stated in
-     viewport units because an element cannot measure itself as a
-     container. 32px is the .wrap inline padding. */
-  .board-wrap { flex: none; height: min(46dvh, calc(100vw - 32px)); }
-  /* Vertical sheet capped at 25dvh — scrolls internally, leaves room for analysis. */
-  .col-sheet { flex: none; max-height: 25dvh; overflow: hidden; display: flex; flex-direction: column; }
+  /* The board column's two children become grid items in their own right, so
+     the move bar can run the full width instead of wrapping onto a second
+     row inside a column barely wider than the four nav buttons. */
+  .col-board { display: contents; }
+  .board-wrap { grid-area: board; }
+  .board-bar  { grid-area: bar; }
+  /* Sized from the width its column has left once the sheet is paid for, so
+     the square fills that column exactly rather than leaving a band of empty
+     container above and below it. 182px = 32px .wrap padding + 10px gap +
+     140px sheet. The dvh cap only bites on a short, wide window. */
+  .board-wrap { flex: none; height: min(38dvh, calc(100vw - 182px)); }
+  .col-sheet { flex: none; overflow: hidden; display: flex; flex-direction: column; }
   .col-head { display: none; }
-  .sheet { display: grid; overflow-x: hidden; overflow-y: auto; padding: 0; }
-  /* Restore ruled-sheet styles that the horizontal strip had overridden. */
-  .sheet-num { border-bottom: 1px solid var(--line-soft); padding: 6px 7px 6px 0; }
+  /* A narrower sheet than the desk's: the number column loses the padding it
+     only needs when there is room, and notation drops to the meta size so a
+     move and its grade mark still clear the cell. */
+  .sheet {
+    display: grid; grid-template-columns: 18px minmax(0, 1fr) minmax(0, 1fr);
+    overflow-x: hidden; overflow-y: auto; padding: 0; font-size: var(--t-meta);
+  }
+  .sheet-num { border-bottom: 1px solid var(--line-soft); padding: 6px 4px 6px 0; }
   .sheet-gap { display: block; }
-  .mv { width: 100%; border-bottom: 1px solid var(--line-soft); border-radius: 0; padding: 6px 8px; }
+  /* ponytail: a 7-character SAN (Qa1xd4+) clips at this width; widen the
+     column if the long-disambiguation case ever shows up in practice. */
+  .mv {
+    width: 100%; border-bottom: 1px solid var(--line-soft); border-radius: 0;
+    padding: 6px 5px; gap: 4px; overflow: hidden;
+  }
   .mv .tagged { margin-left: auto; }
   /* The coaching copy is the first thing to go when the screen is short —
      the question and the options still read on their own. */
@@ -515,8 +535,6 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
   .tabs { order: 3; width: 100%; }
   .tabs button { flex: 1; }
   .topbar-actions { margin-left: auto; }
-  /* Smaller board leaves more room for the answer/analysis area below. */
-  .board-wrap { height: min(40dvh, calc(100vw - 32px)); }
 }
 
 /* ---------- verdict ---------- */
