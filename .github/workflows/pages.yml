@@ -1,0 +1,57 @@
+# Build the page and publish it to GitHub Pages.
+#
+# dist/ is deliberately untracked — the repo holds source, and index.html is
+# generated — so the artifact is built here on every push rather than
+# committed alongside the code it is built from.
+#
+# There is no install step because there is nothing to install: the project
+# has no dependencies, dev or otherwise, so `npm test` runs straight from a
+# bare checkout. The suite builds the page itself and then asserts against the
+# built file, which means a broken build fails the tests rather than quietly
+# publishing. Nothing reaches the site unless all of it passes.
+
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# A queued run should wait for the one in flight rather than race it, but
+# superseded runs are not worth finishing.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Builds dist/index.html, then runs every suite against it.
+      - name: Test
+        run: npm test
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
