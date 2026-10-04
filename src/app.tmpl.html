@@ -492,19 +492,15 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
      viewport units because an element cannot measure itself as a
      container. 32px is the .wrap inline padding. */
   .board-wrap { flex: none; height: min(46dvh, calc(100vw - 32px)); }
-  .col-sheet { flex: none; }
+  /* Vertical sheet capped at 25dvh — scrolls internally, leaves room for analysis. */
+  .col-sheet { flex: none; max-height: 25dvh; overflow: hidden; display: flex; flex-direction: column; }
   .col-head { display: none; }
-  .sheet {
-    display: flex; flex: none; align-items: center; gap: 2px; padding: 3px 5px;
-    overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity;
-  }
-  .sheet-num { border-bottom: 0; padding: 0 3px 0 7px; }
-  .sheet-gap { display: none; }
-  .mv {
-    width: auto; flex: none; border-bottom: 0; border-radius: 6px;
-    padding: 6px 9px; scroll-snap-align: center;
-  }
-  .mv .tagged { margin-left: 2px; }
+  .sheet { display: grid; overflow-x: hidden; overflow-y: auto; padding: 0; }
+  /* Restore ruled-sheet styles that the horizontal strip had overridden. */
+  .sheet-num { border-bottom: 1px solid var(--line-soft); padding: 6px 7px 6px 0; }
+  .sheet-gap { display: block; }
+  .mv { width: 100%; border-bottom: 1px solid var(--line-soft); border-radius: 0; padding: 6px 8px; }
+  .mv .tagged { margin-left: auto; }
   /* The coaching copy is the first thing to go when the screen is short —
      the question and the options still read on their own. */
   .intent .intent-sub, .verdict .note + .note { display: none; }
