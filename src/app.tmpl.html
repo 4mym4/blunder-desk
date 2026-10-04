@@ -1,0 +1,2884 @@
+<title>Blunder Desk</title>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,700&family=Spectral:wght@500;600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+/* Layout: a study desk — board on the left, scoresheet ruled like a
+   tournament sheet on the right, verdicts under the board. Stacks on phones. */
+:root {
+  --bg:        #E7EAE6;
+  --surface:   #FBFBF9;
+  --surface-2: #F0F2EE;
+  --ink:       #1A2027;
+  --ink-soft:  #44525C;
+  --muted:     #5C6A72;
+  --line:      #CDD4CE;
+  --line-soft: #DFE4DD;
+  --brass:     #9A6E17;
+  --brass-soft:#EFE2C4;
+  --critical:  #9C2B23;
+  --crit-soft: #F3DCD8;
+  --warning:   #8B6003;
+  --warn-soft: #F6E6C8;
+  --good:      #3A6647;
+  --good-soft: #DCE8DD;
+  --sq-light:  #DEE2D4;
+  --sq-dark:   #667360;
+  --pc-light:  #F7F5EC;
+  --pc-dark:   #20262A;
+  --shadow:    0 1px 2px rgba(26,32,39,.08), 0 8px 24px -12px rgba(26,32,39,.18);
+
+  --f-display: "Spectral", Georgia, "Times New Roman", serif;
+  /* The wordmark only. A didone against the page's text serif — vertical
+     stress and hairline serifs where Spectral is even-weighted and bookish —
+     so the product's name is not set in the same voice as "Your games".
+     The fallbacks are the system didones, which keep the character when the
+     font request cannot be made at all (the published artifact blocks it). */
+  --f-mark:    "Bodoni Moda", "Bodoni 72", Didot, "Didot LT STD", Georgia, serif;
+  --f-body:    "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Type roles. Eight, and every step crosses a family or a case change as
+     well as a size — so no two adjacent roles rely on half a pixel to say
+     they do different jobs. */
+  --t-brand:   clamp(21px, 2.5vw, 30px);  /* the wordmark      Bodoni 700  */
+  --t-data:    27px;   /* ledger figures                      mono 600  */
+  --t-title:   25px;   /* section title                   Spectral 600  */
+  --t-verdict: 18px;   /* the analysis sentence           Spectral 500  */
+  --t-heading: 16px;   /* card heading                    Spectral 600  */
+  --t-body:    15px;   /* explanatory prose                   sans 400  */
+  --t-ui:      13px;   /* controls, notation                  sans 500  */
+  --t-meta:    12px;   /* secondary notes, sentence case      sans 400  */
+  --t-label:   11px;   /* structural labels only         mono 500 caps  */
+
+  /* Two roles the record sheet adds above the scale. Both are the top of
+     their own family's run rather than a tenth step in one ladder: the
+     standing verdict is the display voice at its largest, the figure
+     beside it is the measuring hand at its largest, and nothing else on
+     the page is allowed near either size. */
+  /* The floors matter as much as the caps: a phone clamps both, and the
+     verdict has to stay the larger of the two there or the page argues
+     with itself about which one is the headline. */
+  --t-lead:   clamp(32px, 3.5vw, 45px); /* the standing verdict  Spectral 600  */
+  --t-figure: clamp(29px, 3.0vw, 40px); /* the one figure            mono 600  */
+
+  /* Light text on a dark surface reads thinner and tighter than the same
+     text inverted. The dark theme adds a little tracking back; see below. */
+  --t-track: 0em;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #12161A;
+    --surface:   #1A2025;
+    --surface-2: #222A30;
+    --ink:       #E5E9E5;
+    --ink-soft:  #B4BFC3;
+    --muted:     #8795A0;
+    --line:      #2C353C;
+    --line-soft: #242C32;
+    --brass:     #D4A54B;
+    --brass-soft:#3A2F17;
+    --critical:  #E27065;
+    --crit-soft: #3A1F1D;
+    --warning:   #DFA441;
+    --warn-soft: #392B13;
+    --good:      #74B288;
+    --good-soft: #1D3024;
+    --sq-light:  #7A8873;
+    --sq-dark:   #2E3833;
+    --pc-light:  #EDEBE1;
+    --pc-dark:   #171C20;
+    --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+    --t-track: .006em;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:        #12161A;
+  --surface:   #1A2025;
+  --surface-2: #222A30;
+  --ink:       #E5E9E5;
+  --ink-soft:  #B4BFC3;
+  --muted:     #8795A0;
+  --line:      #2C353C;
+  --line-soft: #242C32;
+  --brass:     #D4A54B;
+  --brass-soft:#3A2F17;
+  --critical:  #E27065;
+  --crit-soft: #3A1F1D;
+  --warning:   #DFA441;
+  --warn-soft: #392B13;
+  --good:      #74B288;
+  --good-soft: #1D3024;
+  --sq-light:  #7A8873;
+  --sq-dark:   #2E3833;
+  --pc-light:  #EDEBE1;
+  --pc-dark:   #171C20;
+  --shadow:    0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  --t-track: .006em;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: var(--t-body); line-height: 1.55;
+  letter-spacing: var(--t-track);
+  -webkit-font-smoothing: antialiased;
+  /* A column shell, so the review pane can claim exactly the space the
+     topbar leaves without hard-coding the topbar's height. */
+  min-height: 100dvh; display: flex; flex-direction: column;
+}
+/* The tab panels set `display`, which outranks the UA rule for [hidden]. */
+[hidden] { display: none !important; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: -.01em; }
+button { font: inherit; color: inherit; }
+
+/* Browser surfaces that ship with defaults belonging to no design system. */
+::selection { background: var(--brass-soft); color: var(--ink); }
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+
+/* ---------- shell ---------- */
+.wrap {
+  width: 100%; max-width: 1180px; margin: 0 auto; padding-inline: 16px;
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+}
+#v-games, #v-patterns { padding-bottom: 48px; }
+
+.topbar {
+  flex: none; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 40;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line-soft);
+}
+.topbar-in { max-width: 1180px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+/* ---------- the masthead ----------
+   The wordmark used to be Spectral 600 at 29px: the same face, weight and
+   colour as every section heading on the page, so the product's name carried
+   no more voice than "Your games" did. It is the one engraved thing on a page
+   of ruled paper now — tracked didone caps, and the only element that spends
+   brass at display size, where brass finally clears contrast as text. */
+.brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; min-width: 0; }
+.mark {
+  display: inline-flex; align-items: baseline; gap: .04em; min-width: 0;
+  font-family: var(--f-mark); font-size: var(--t-brand); font-weight: 700;
+  letter-spacing: .055em; line-height: 1; text-transform: uppercase;
+  white-space: nowrap;
+}
+.mark b { font-weight: inherit; letter-spacing: .055em; }
+
+/* BLUNDER DESK carries B, N, R and K — bishop, knight, rook, king — in order:
+   four of the five piece letters, sitting in the product's own name.
+
+   Setting those four AS the pieces was the first attempt, and it failed. A
+   wordmark's one job is to say the name, and with four of eleven letters
+   replaced it read as a scattered row of pieces — unreadable in brass and
+   unreadable in ink. So the letters stay, in brass, and the pieces are what
+   they turn into: the name sets up as a board, resolves into words, and goes
+   back to pieces whenever you touch it.
+
+   Letter and piece share one grid cell, so the swap cannot shift the layout
+   however differently the two are proportioned. */
+.sw {
+  position: relative; display: inline-block;
+  color: color-mix(in srgb, var(--brass) 85%, var(--ink));
+}
+.sw i { font-style: normal; }
+.mark-pc {
+  position: absolute; left: 50%; translate: -50%;
+  width: 1.04em; height: 1.04em;
+  fill: color-mix(in srgb, var(--brass) 85%, var(--ink));
+  stroke: none; --pc-detail: transparent;
+  /* The art occupies the middle of its 45-unit box, so the glyph is pushed
+     down to stand on the same baseline as the letters. Measured, not guessed. */
+  bottom: -.19em;
+  opacity: 0;                        /* the letter is what you read at rest */
+}
+/* Brass carried toward the foreground, not used neat. Plain brass measures
+   3.75:1 here — fine for large text by the letter of it, but a didone's
+   hairlines are about a pixel wide at this size and 3.75 is not enough to
+   hold them. Mixing toward --ink moves it away from the page in BOTH themes,
+   because --ink is whichever end the text is at, so one value clears 4.57:1
+   in light and 8.83:1 in dark and stays unmistakably brass. */
+.mark .desk { color: color-mix(in srgb, var(--brass) 85%, var(--ink)); }
+/* Two squares of a board, drawn in the same 16-unit box as every other icon
+   here. A whole glyph between the words would read as a missing character;
+   a checker never does. */
+.mark-board {
+  width: .5em; height: .5em; flex: none; transform-origin: 50% 50%;
+  margin-inline: .26em;
+  fill: color-mix(in srgb, var(--brass) 85%, var(--ink));
+  /* The square baselines on the text, which drops its centre .125em below the
+     middle of the caps. Margin cannot correct that — a flex item's baseline is
+     synthesised from its border box, so margin-bottom moves nothing — and
+     transform is spoken for by the turn, which would overwrite any nudge put
+     there. Relative offset touches neither. Bodoni's caps measure .75em at
+     this size, so .125em is exactly half the difference. */
+  position: relative; bottom: .125em;
+}
+.brand .tag {
+  font-family: var(--f-mono); font-size: var(--t-label); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); white-space: nowrap;
+}
+
+.tabs { display: flex; gap: 2px; background: var(--surface-2); padding: 3px; border-radius: 9px; border: 1px solid var(--line-soft); }
+.tabs button {
+  border: 0; background: transparent; padding: 6px 13px; border-radius: 6px; cursor: pointer;
+  font-size: var(--t-ui); font-weight: 500; color: var(--muted); transition: background .18s, color .18s;
+}
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.tabs button:hover:not([aria-selected="true"]) { color: var(--ink-soft); }
+
+/* Two roles that used to be one class. `.label` names a region — short,
+   fixed, and set in the tracked micro-caps the scoresheet identity runs on.
+   `.note` is prose about that region; running a 51-character sentence
+   through the label treatment made it shout and cost it a pixel it needed. */
+.label {
+  font-family: var(--f-mono); font-size: var(--t-label); font-weight: 500;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--muted);
+  line-height: 1.45;
+}
+.note { font-size: var(--t-meta); color: var(--muted); line-height: 1.5; }
+/* Transient, and it reports progress, so it outranks an ordinary note. */
+#grade-progress { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 12px; }
+.muted { color: var(--muted); }
+.sect-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-block: 26px 12px; }
+.sect-head h2 { font-size: var(--t-title); }
+
+/* ---------- buttons ---------- */
+.btn {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
+  padding: 8px 14px; cursor: pointer; font-size: var(--t-ui); font-weight: 500;
+  transition: border-color .16s, background .16s, transform .08s;
+}
+.btn:hover { border-color: var(--muted); }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn-primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn-primary:hover { background: var(--ink-soft); border-color: var(--ink-soft); }
+.btn-sm { padding: 5px 10px; font-size: var(--t-meta); border-radius: 7px; }
+:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; border-radius: 4px; }
+
+input[type=text], textarea {
+  font: inherit; width: 100%; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+}
+textarea { font-family: var(--f-mono); font-size: var(--t-meta); line-height: 1.6; resize: vertical; }
+input[type=text]:focus, textarea:focus { outline: none; border-color: var(--brass); box-shadow: 0 0 0 3px var(--brass-soft); }
+
+/* ---------- review layout ----------
+   The desk fits the viewport: scoresheet, board and analysis are all on
+   screen at once and the page itself never scrolls. Only the sheet and
+   the analysis column scroll, inside themselves. The board is sized from
+   whichever of its box's two dimensions is smaller, so it shrinks to fit
+   a short window instead of pushing the analysis off the bottom. */
+#v-review { display: flex; flex-direction: column; flex: 1; min-height: 0; padding-bottom: 12px; }
+#v-review .sect-head { margin-block: 13px 10px; flex: none; overflow-x: clip; }
+
+.review-grid {
+  display: grid; gap: 14px; flex: 1; min-height: 0;
+  grid-template-areas: "board sheet analysis";
+  grid-template-columns: minmax(0, 1fr) 214px 332px;
+}
+.col { min-height: 0; min-width: 0; }
+.col-board    { grid-area: board;    display: flex; flex-direction: column; gap: 10px; }
+.col-sheet    { grid-area: sheet;    display: flex; flex-direction: column; overflow: hidden; }
+.col-analysis { grid-area: analysis; overflow-y: auto; overscroll-behavior: contain;
+                display: flex; flex-direction: column; gap: 12px; padding-right: 2px; }
+.col-head {
+  padding: 10px 13px; border-bottom: 1px solid var(--line-soft); flex: none;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+}
+.stats-card { padding: 13px 15px; flex: none; }
+#game-stats { margin-top: 9px; display: flex; flex-direction: column; gap: 7px; font-size: var(--t-ui); }
+
+/* ---------- board ---------- */
+/* Container query units read the wrapper's own box, so this is the one
+   expression that means "min of the width and the height available". */
+.board-wrap {
+  position: relative; flex: 1; min-height: 0;
+  container-type: size; display: grid; place-items: center;
+}
+.board {
+  position: relative; width: min(100cqw, 100cqh); height: min(100cqw, 100cqh);
+  display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+  border-radius: 6px; overflow: hidden; box-shadow: var(--shadow);
+  touch-action: manipulation;
+}
+.sq { position: relative; }
+/* The two square shades bracket mid-luminance, so no single mark colour can
+   sit legibly on both: brass measured 1.13:1 on a dark square, the danger
+   ring 1.87:1, the check tint 1.02:1. The pieces solved this first — a body
+   in one neutral and a stroke in the other — and every mark on the board now
+   takes the same deal. The hue still says what the mark means; --mark-ink is
+   the neutral its ground demands, and it carries the legibility. */
+.sq.l { background: var(--sq-light); --mark-ink: var(--pc-dark);  }
+.sq.d { background: var(--sq-dark);  --mark-ink: var(--pc-light); }
+
+.sq .coord {
+  position: absolute; font-family: var(--f-mono); font-size: 10px; font-weight: 500;
+  color: var(--mark-ink);
+  pointer-events: none; user-select: none;
+}
+.sq .coord.f { right: 3px; bottom: 1px; }
+.sq .coord.r { left: 3px; top: 1px; }
+
+/* <use> clones its target into a shadow tree, which descendant selectors
+   cannot reach. fill, stroke and custom properties all inherit through it,
+   so every piece colour is set on the <svg> host and inherited inward. */
+.pc {
+  position: absolute; inset: 5.5%; width: 89%; height: 89%; pointer-events: none;
+  stroke-linejoin: round; stroke-linecap: round;
+}
+.pc.w { fill: var(--pc-light); stroke: var(--pc-dark);  stroke-width: 1.6; --pc-detail: var(--pc-dark); }
+.pc.b { fill: var(--pc-dark);  stroke: var(--pc-light); stroke-width: 1.1; --pc-detail: var(--pc-light); }
+
+/* ---------- the annotation layer ----------
+   The board's loudest job is saying what just moved. Brass alone cannot do
+   it on both grounds — it measures 1.26:1 on a dark square in the light
+   theme — so the trace borrows the answer the piece shapes already use: a
+   fill strong enough that the square beneath stops deciding legibility.
+   Origin reads hollow, destination reads filled, so the mark has direction
+   rather than just presence. */
+/* Direction used to be hollow versus filled, and the fill was brass at 48% —
+   which on a dark square composited to 1.08:1 against the bare square, so the
+   half of the trace that says "it landed here" was not actually visible.
+   Dashed for the square it left, solid for the square it reached: the same
+   language the free and danger rings already speak, and one that owes nothing
+   to luminance. Brass stays as the warmth of the annotating hand rather than
+   as the thing carrying the meaning. */
+.sq.from::before, .sq.to::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  outline: 2px solid color-mix(in srgb, var(--mark-ink) 88%, transparent);
+  outline-offset: -2px;
+}
+.sq.from::before { outline-style: dashed; }
+.sq.to::before { background: color-mix(in srgb, var(--brass) 42%, transparent); }
+
+/* One stroke weight across every mark on the board, so the overlays read as
+   the same hand annotating the same diagram. */
+/* Both rings sit at mid-luminance and so fail on one shade or the other in
+   every theme — the danger ring measured 1.87:1 on a dark square in the light
+   theme and 1.20:1 on a light square in the dark one. Washing the hue toward
+   the ground would fix the number and destroy the meaning: a 25% critical
+   reads as pink, not as danger. So the hue stays at full strength and takes a
+   casing instead, a hairline of --mark-ink on each edge of the band. Exactly
+   how the pieces are drawn, and the ring is still unmistakably red. */
+.sq .ring {
+  position: absolute; inset: 6%; border-radius: 50%; pointer-events: none;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--mark-ink) 80%, transparent),
+              inset 0 0 0 1.5px color-mix(in srgb, var(--mark-ink) 80%, transparent);
+}
+.sq.danger .ring { border: 2.5px solid var(--critical); animation: pulse 1.8s ease-in-out infinite; }
+.sq.free .ring   { border: 2.5px dashed var(--good); }
+@keyframes pulse { 0%,100% { opacity: .95; transform: scale(1); } 50% { opacity: .45; transform: scale(.9); } }
+@media (prefers-reduced-motion: reduce) { .sq.danger .ring { animation: none; } }
+
+.sq.pickable { cursor: pointer; }
+/* Same deal for the target-picking dots: a brass disc at half alpha vanished
+   on a dark square, so the disc is cased rather than faded. */
+.sq.pickable::before {
+  content: ''; position: absolute; inset: 18%; border-radius: 50%;
+  background: color-mix(in srgb, var(--brass) 80%, transparent); pointer-events: none;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--mark-ink) 65%, transparent);
+}
+.sq.pickable:hover::before { background: var(--brass); inset: 10%; }
+.sq.picked::before { background: var(--good); inset: 8%; }
+
+.flier { position: absolute; z-index: 5; pointer-events: none; transition: transform .19s cubic-bezier(.3,.9,.4,1); }
+@media (prefers-reduced-motion: reduce) { .flier { transition: none; } }
+
+.board-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex: none; }
+.nav-btn {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
+  width: 38px; height: 34px; display: grid; place-items: center; cursor: pointer; font-size: var(--t-ui);
+}
+.nav-btn:hover { border-color: var(--muted); }
+.toggle { margin-left: auto; display: flex; gap: 6px; }
+.toggle button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* ---------- scoresheet ----------
+   One flat run of cells: number, white move, black move, number, …
+   Laid out as a ruled two-column sheet when there is a column to put it
+   in, and as a single scrolling strip when there is not. */
+.sheet {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr);
+  align-content: start; overflow-y: auto; overflow-x: hidden; min-height: 0; flex: 1;
+  font-family: var(--f-mono); font-size: var(--t-ui); scrollbar-width: thin;
+}
+.sheet-num {
+  font-size: var(--t-label); color: var(--muted); text-align: right;
+  padding: 6px 7px 6px 0; border-bottom: 1px solid var(--line-soft);
+}
+.sheet-gap { border-bottom: 1px solid var(--line-soft); }
+.mv {
+  display: flex; align-items: center; gap: 6px; width: 100%; text-align: left;
+  font: inherit; padding: 6px 8px; background: transparent; border: 0;
+  border-bottom: 1px solid var(--line-soft); cursor: pointer;
+  transition: background .14s;
+}
+.mv:hover { background: var(--surface-2); }
+.mv[aria-current="true"] { background: var(--brass-soft); font-weight: 600; }
+/* The grade mark. Every row reserves the same box whether or not it carries
+   a grade, so the column stays ruled and nothing reflows as grading fills in
+   behind the reader. Shape and hue both carry the grade — see the glyph set
+   below the stylesheet for why neither does the job alone. */
+.mv .gm { width: 10px; height: 10px; flex: none; display: block; fill: currentColor; }
+.mv .gm.blunder    { color: var(--critical); }
+.mv .gm.mistake    { color: var(--warning); }
+.mv .gm.inaccuracy { color: var(--warning); }
+.mv .gm.good       { color: var(--good); }
+.ic { width: 15px; height: 15px; fill: currentColor; display: block; flex: none; }
+.theme-btn { width: 34px; height: 30px; color: var(--muted); }
+
+/* ---------- sound control ----------
+   The button opens the level; muting lives inside it, so the topbar keeps one
+   control rather than two. A range input ships with an appearance that belongs
+   to no design system, so the track and thumb are drawn from the palette. */
+.sound-ctl { position: relative; }
+.sound-pop {
+  position: absolute; right: 0; top: calc(100% + 9px); z-index: 60;
+  width: 214px; padding: 12px; box-shadow: var(--shadow); border-color: var(--line);
+  display: flex; flex-direction: column; gap: 11px;
+}
+.sound-pop .btn { width: 100%; }
+.sound-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 9px; align-items: center; }
+.sound-val {
+  font-family: var(--f-mono); font-size: var(--t-meta); color: var(--ink-soft);
+  font-variant-numeric: tabular-nums; min-width: 3ch; text-align: right;
+}
+#t-level { -webkit-appearance: none; appearance: none; width: 100%; height: 18px; background: transparent; }
+#t-level::-webkit-slider-runnable-track { height: 5px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line-soft); }
+#t-level::-moz-range-track { height: 5px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line-soft); }
+#t-level::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; margin-top: -6px;
+  width: 15px; height: 15px; border-radius: 50%; cursor: pointer;
+  background: var(--brass); border: 1px solid color-mix(in srgb, var(--ink) 34%, transparent);
+}
+#t-level::-moz-range-thumb {
+  width: 15px; height: 15px; border-radius: 50%; cursor: pointer;
+  background: var(--brass); border: 1px solid color-mix(in srgb, var(--ink) 34%, transparent);
+}
+@media (pointer: coarse) { #t-level { height: 44px; } }
+.theme-btn:hover { color: var(--ink); }
+.mv .tagged { margin-left: auto; width: 9px; height: 9px; color: var(--brass); }
+
+/* A mouse can hit a 34px control; a fingertip cannot. Coarse pointers get
+   the platform minimum without making desktop controls chunky. */
+@media (pointer: coarse) {
+  .nav-btn { width: 44px; height: 44px; }
+  .mv { min-height: 44px; }
+  .opt { min-height: 44px; padding-block: 10px; }
+  .btn-sm { min-height: 44px; }
+  .game-row { padding-block: 14px; }
+  /* The tab bar is the whole app's navigation and was the one control the
+     rule above never reached — 32px tall on a touch screen. */
+  .tabs button { min-height: 44px; padding-inline: 15px; }
+}
+
+/* ---------- narrow: board on top, sheet as a strip, analysis below ---------- */
+@media (max-width: 900px) {
+  .review-grid {
+    grid-template-areas: "board" "sheet" "analysis";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 10px;
+  }
+  /* A square board capped by height, so the strip and the analysis below
+     it always have room. Sized, not stretched, here — and stated in
+     viewport units because an element cannot measure itself as a
+     container. 32px is the .wrap inline padding. */
+  .board-wrap { flex: none; height: min(46dvh, calc(100vw - 32px)); }
+  .col-sheet { flex: none; }
+  .col-head { display: none; }
+  .sheet {
+    display: flex; flex: none; align-items: center; gap: 2px; padding: 3px 5px;
+    overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity;
+  }
+  .sheet-num { border-bottom: 0; padding: 0 3px 0 7px; }
+  .sheet-gap { display: none; }
+  .mv {
+    width: auto; flex: none; border-bottom: 0; border-radius: 6px;
+    padding: 6px 9px; scroll-snap-align: center;
+  }
+  .mv .tagged { margin-left: 2px; }
+  /* The coaching copy is the first thing to go when the screen is short —
+     the question and the options still read on their own. */
+  .intent .intent-sub, .verdict .note + .note { display: none; }
+  /* The tagline alone pushes the topbar onto a second row, which costs
+     more vertical space than it is worth on a phone. */
+  .brand .tag { display: none; }
+  #v-review .sect-head { margin-block: 10px 8px; gap: 7px; }
+  #v-review .sect-head h2 { font-size: var(--t-heading); }
+}
+
+/* ---------- verdict ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; border-radius: 999px;
+  padding: 3px 9px; font-size: var(--t-meta); font-weight: 500; font-family: var(--f-body);
+  border: 1px solid transparent; white-space: nowrap;
+}
+.chip.critical { background: var(--crit-soft); color: var(--critical); border-color: color-mix(in srgb, var(--critical) 30%, transparent); }
+.chip.warning  { background: var(--warn-soft); color: var(--warning);  border-color: color-mix(in srgb, var(--warning) 30%, transparent); }
+.chip.good     { background: var(--good-soft); color: var(--good);     border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+.chip.info     { background: var(--surface-2); color: var(--muted);    border-color: var(--line-soft); }
+
+.verdict { padding: 14px 16px; }
+/* The one sentence the product exists to deliver. 500 is stated because only
+   Spectral 500 and 600 are loaded — left at the inherited 400 the browser
+   picks a weight nobody chose. */
+.verdict .headline {
+  font-family: var(--f-display); font-size: var(--t-verdict); font-weight: 500;
+  line-height: 1.4; letter-spacing: -.005em; margin: 9px 0 0; text-wrap: pretty;
+}
+.verdict .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+/* SAN is case-sensitive — B is the bishop, b is the b-file — so the move
+   identifier can never take a text-transform. */
+.notation { font-family: var(--f-mono); letter-spacing: 0; text-transform: none; }
+.verdict-note { font-size: var(--t-meta); color: var(--muted); line-height: 1.5; margin: 7px 0 0; }
+
+/* Why the better move was better, and the line it was heading for. Ruled off
+   rather than boxed, because it is a continuation of the verdict above it. */
+.best-why { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--line-soft); }
+.best-reason { margin: 0; font-size: var(--t-meta); color: var(--ink-soft); line-height: 1.5; }
+.best-move-line { display: flex; align-items: baseline; gap: 8px; margin: 7px 0 0; flex-wrap: wrap; }
+.best-move-line .notation { font-size: var(--t-ui); color: var(--ink); font-weight: 500; }
+
+/* ---------- intention ---------- */
+.intent { border: 1px solid var(--brass); background: var(--surface); padding: 15px 16px; border-radius: 12px; }
+.intent h3 { font-size: var(--t-heading); line-height: 1.35; }
+.intent-sub { margin: 5px 0 0; }
+.opts { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+.opt {
+  border: 1px solid var(--line); background: var(--surface-2); border-radius: 8px;
+  padding: 7px 12px; cursor: pointer; font-size: var(--t-ui); font-weight: 500;
+  transition: border-color .15s, background .15s;
+}
+.opt:hover { border-color: var(--brass); background: var(--brass-soft); }
+.opt[aria-pressed="true"] { border-color: var(--brass); background: var(--brass-soft); font-weight: 600; }
+.picking { border: 1px dashed var(--brass); background: var(--brass-soft); border-radius: 9px; padding: 10px 12px; margin-top: 11px; font-size: var(--t-body); line-height: 1.5; }
+
+/* ---------- games ---------- */
+.import-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); gap: 14px; }
+.import-card { padding: 16px; display: flex; flex-direction: column; gap: 9px; }
+.import-card h3 { font-size: var(--t-heading); }
+.import-card p { margin: 0; font-size: var(--t-meta); color: var(--muted); line-height: 1.5; }
+/* Which side you played. It used to be assumed, always White, and the whole
+   analysis is computed for that side — so it gets asked, not guessed. */
+.side-pick { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.side-pick .label { margin-right: 2px; }
+.side-pick [role="radio"][aria-checked="true"] {
+  border-color: var(--brass); background: var(--brass-soft); font-weight: 600;
+}
+.status { font-size: var(--t-meta); min-height: 18px; font-family: var(--f-mono); }
+
+/* The subtitle states the side and is the control for changing it, because
+   that is where you find out it is wrong. */
+.side-flip {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0 1px;
+  cursor: pointer; text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--brass) 70%, transparent);
+  text-underline-offset: 3px;
+}
+.side-flip:hover { color: var(--ink); text-decoration-color: var(--brass); }
+.side-guessed { color: var(--brass); }
+.status.err { color: var(--critical); }
+.status.ok { color: var(--good); }
+
+.game-row {
+  display: flex; align-items: center; gap: 12px; padding: 11px 14px; width: 100%;
+  background: transparent; border: 0; border-bottom: 1px solid var(--line-soft);
+  cursor: pointer; text-align: left; transition: background .14s;
+}
+.game-row:hover { background: var(--surface-2); }
+.game-row:last-child { border-bottom: 0; }
+.game-row .res { font-family: var(--f-mono); font-size: var(--t-label); font-weight: 600; width: 28px; flex: none; text-align: center;
+  border-radius: 4px; padding: 2px 0; }
+.game-row .res.win { background: var(--good-soft); color: var(--good); }
+.game-row .res.loss { background: var(--crit-soft); color: var(--critical); }
+.game-row .res.draw { background: var(--surface-2); color: var(--muted); }
+.game-row .meta { min-width: 0; flex: 1; }
+.game-row .meta b { font-weight: 500; font-size: var(--t-body); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-row .meta span { font-size: var(--t-meta); color: var(--muted); }
+.game-row .score { font-family: var(--f-mono); font-size: var(--t-meta); text-align: right; flex: none; }
+.game-row .score-v { font-weight: 600; }
+.game-row .score-v.crit { color: var(--critical); }
+.game-row .score-v.warn { color: var(--warning); }
+.game-row .score-v.good { color: var(--good); }
+
+/* ---------- patterns: the record sheet ----------
+   Review's identity is a ruled tournament sheet — a number column, one
+   hairline per entry, mono notation, brass for the annotating hand. This
+   page used to opt out of all of it: six floating tiles and four bordered
+   cards, the generic dashboard shape, sitting under the one heading that
+   states what the product is for.
+
+   It is one sheet now, and the standing verdict is the heading. Naming the
+   cause instead of posting a score is what every move verdict already does;
+   this is the same sentence scaled to the whole record. Everything under it
+   is ruled in the scoresheet's own hand so the claim is the only thing on
+   the page raising its voice. */
+.sheet-head {
+  display: grid; grid-template-columns: minmax(0, 1fr) 236px; gap: 18px 44px;
+  align-items: end; margin-block: 26px 0; padding-bottom: 24px;
+  border-bottom: 2px solid var(--ink);
+}
+#pat-lead {
+  font-size: var(--t-lead); line-height: 1.06; letter-spacing: -.028em;
+  max-width: 21ch;              /* a display measure, not a reading one */
+}
+.pat-evidence { margin: 15px 0 0; font-size: var(--t-body); color: var(--ink-soft); max-width: 56ch; text-wrap: pretty; }
+.pat-caveat   { margin: 8px 0 0; font-size: var(--t-meta); color: var(--muted); max-width: 56ch; }
+
+.pat-figure { min-width: 0; }
+.pat-figure .v {
+  display: block; font-family: var(--f-mono); font-weight: 600;
+  font-size: var(--t-figure); line-height: .94; letter-spacing: -.035em;
+  font-variant-numeric: tabular-nums;
+}
+.pat-figure .k { display: block; margin-top: 8px; font-size: var(--t-ui); color: var(--ink-soft); }
+.pat-figure.crit .v { color: var(--critical); }
+.pat-figure.warn .v { color: var(--warning); }
+.pat-figure.good .v { color: var(--good); }
+
+/* The tone colour on that figure is the only place the product states its
+   own thresholds. The gauge says them out loud instead of leaving the
+   reader to infer a rule from a hue. */
+.gauge { margin-top: 12px; }
+.gauge .bar-track { height: 7px; }
+.gauge-axis {
+  position: relative; height: 14px; margin-top: 4px;
+  font-family: var(--f-mono); font-size: var(--t-label); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.gauge-axis span { position: absolute; top: 5px; transform: translateX(-50%); }
+.gauge-axis span::before {
+  content: ''; position: absolute; left: 50%; top: -5px;
+  width: 1px; height: 4px; background: var(--line);
+}
+.gauge-note { margin: 4px 0 0; font-size: var(--t-meta); color: var(--muted); }
+
+/* The figures the verdict is built from, ruled one per line in the same
+   hand as the scoresheet rather than boxed. */
+.ledger { display: grid; padding-top: 6px; }
+.led-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 20px;
+  align-items: baseline; padding: 15px 2px; border-bottom: 1px solid var(--line-soft);
+}
+.led-row:last-child { border-bottom: 0; }
+.led-k { min-width: 0; font-size: var(--t-body); font-weight: 500; }
+.led-n { display: block; margin-top: 2px; font-size: var(--t-meta); font-weight: 400; color: var(--muted); }
+.led-v {
+  font-family: var(--f-mono); font-size: var(--t-data); font-weight: 600;
+  line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+}
+.led-row.crit .led-v { color: var(--critical); }
+.led-row.warn .led-v { color: var(--warning); }
+.led-row.good .led-v { color: var(--good); }
+
+/* A tally is a table. Columns are headed, counts and material are stated,
+   and the bar is the comparison rather than the whole content. */
+.bars { display: grid; }
+.bar-row {
+  display: grid; grid-template-columns: minmax(96px, 168px) minmax(0, 1fr) 40px;
+  gap: 14px; align-items: center; font-size: var(--t-ui);
+  padding: 13px 2px; border-bottom: 1px solid var(--line-soft);
+}
+.bars.has-sub .bar-row { grid-template-columns: minmax(96px, 168px) minmax(0, 1fr) 40px 62px; }
+.bar-row:last-child { border-bottom: 0; }
+.bar-row.bar-head { padding: 0 2px 9px; border-bottom: 1px solid var(--line); }
+.bar-row.bar-head .label { text-align: right; }
+.bar-track { height: 9px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 999px; transition: width .5s cubic-bezier(.3,.9,.4,1); }
+.bar-row .n, .bar-row .s {
+  font-family: var(--f-mono); font-size: var(--t-meta); text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.bar-row .n { color: var(--ink-soft); }
+.bar-row .s { color: var(--muted); }
+
+/* Section heads are the sheet's own divisions, so each is ruled off rather
+   than floated above a card. */
+#v-patterns .sect-head { margin-block: 36px 14px; padding-top: 24px; border-top: 1px solid var(--line); }
+.pat-block { padding: 14px 2px 2px; }
+#v-patterns .empty { border: 1px dashed var(--line); border-radius: 10px; padding: 28px 20px; }
+
+@media (max-width: 760px) {
+  .sheet-head { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 22px; }
+  #pat-lead { max-width: none; }
+  .led-row { padding-block: 13px; }
+}
+/* The column heads are set in tracked micro-caps, so the count column has
+   to hold "TIMES" at its tracking, not just the digits under it. */
+@media (max-width: 520px) {
+  .bar-row { grid-template-columns: minmax(84px, 1fr) minmax(0, 1.4fr) 42px; gap: 10px; font-size: var(--t-meta); }
+  .bars.has-sub .bar-row { grid-template-columns: minmax(84px, 1fr) minmax(0, 1.1fr) 42px 52px; }
+}
+
+.intent-detail { margin: 10px 0 0; font-size: var(--t-body); line-height: 1.55; }
+.stat-note { font-size: var(--t-meta); margin: -3px 0 4px; }
+.stat-foot { font-size: var(--t-meta); border-top: 1px solid var(--line-soft); padding-top: 8px; margin-top: 2px; }
+.empty { padding: 30px 20px; text-align: center; color: var(--muted); font-size: var(--t-body); }
+.scroll-x { overflow-x: auto; }
+/* ---------- the one authored moment ----------
+   The verdict is withheld on purpose until the player commits an answer, so
+   releasing it is the only moment on this surface that has earned motion.
+   It uncovers top-down, the way a cover sheet comes off a printed analysis —
+   not a fade, which is what every card used to do on every arrow-key step. */
+@keyframes verdict-release {
+  from { clip-path: inset(0 0 100% 0); opacity: .5; }
+  to   { clip-path: inset(0 0 0 0);    opacity: 1; }
+}
+@keyframes verdict-line {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+.verdict.reveal { animation: verdict-release .46s cubic-bezier(.16, 1, .3, 1) both; }
+.verdict.reveal .chips    { animation: verdict-line .34s cubic-bezier(.16, 1, .3, 1) .08s both; }
+.verdict.reveal .headline { animation: verdict-line .40s cubic-bezier(.16, 1, .3, 1) .15s both; }
+
+/* ---------- motion drawn from the game ----------
+   A knight is the only piece that turns a corner mid-move: two squares, then
+   one. The title arrives on that path, with the dogleg articulated by a
+   per-keyframe easing change rather than a single curve through both legs. */
+@keyframes knight-arrive {
+  0%   { opacity: 0; transform: translate(-1.7em, .8em); animation-timing-function: cubic-bezier(.4, 0, .25, 1); }
+  10%  { opacity: 1; }
+  54%  { transform: translate(0, .8em);  animation-timing-function: cubic-bezier(.2, 0, 0, 1); }
+  100% { opacity: 1; transform: translate(0, 0); }
+}
+.knight-in { animation: knight-arrive .62s both; }
+
+/* The masthead's own moment, and the only motion here that belongs to the
+   product rather than to a position on the board. The mark turns a quarter
+   so its two squares trade — the Flip gesture — then stays turnable on
+   hover. No fill mode: the last keyframe already equals the resting style,
+   so the hover transition takes over cleanly the moment it ends. */
+@keyframes mark-settle {
+  0%   { opacity: 0; transform: rotate(-90deg) scale(.45); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+.mark-in .mark-board { animation: mark-settle .72s cubic-bezier(.16, 1, .3, 1) calc(var(--i) * .07s) both; }
+
+/* Setting up: each piece stands on its square, then resolves into its letter,
+   left to right. One idea carried across four elements rather than four
+   separate effects, and the whole thing is over inside a second. */
+@keyframes set-up-piece {
+  0%      { opacity: 0; transform: translateY(-.5em) scale(.8); }
+  22%     { opacity: 1; transform: none; }
+  60%     { opacity: 1; transform: none; }
+  100%    { opacity: 0; transform: translateY(-.14em) scale(.94); }
+}
+@keyframes resolve-letter {
+  0%, 56% { opacity: 0; transform: translateY(.16em); }
+  100%    { opacity: 1; transform: none; }
+}
+.mark-in .mark-pc { animation: set-up-piece .95s cubic-bezier(.16, 1, .3, 1) calc(var(--i) * .08s) both; }
+.mark-in .sw i    { animation: resolve-letter .95s cubic-bezier(.16, 1, .3, 1) calc(var(--i) * .08s) both; }
+
+/* And they go back to pieces whenever you touch the name. Transitions rather
+   than keyframes, so leaving halfway reverses from wherever it reached instead
+   of snapping back. */
+.sw i, .sw .mark-pc {
+  transition: opacity .26s cubic-bezier(.16, 1, .3, 1), transform .34s cubic-bezier(.16, 1, .3, 1);
+  transition-delay: calc(var(--i) * .045s);
+}
+.brand:hover .sw i    { opacity: 0; transform: translateY(-.14em) scale(.94); }
+.brand:hover .mark-pc { opacity: 1; transform: none; }
+.mark-board { transition: transform .45s cubic-bezier(.16, 1, .3, 1); }
+.brand:hover .mark-board { transform: rotate(90deg); }
+
+/* Check: a ring thrown out from the king, and a tint that stays while the
+   pulse goes, so the state outlives the moment that announced it. */
+/* The tint is what makes the state outlive the pulse, and at 30% critical it
+   composited to between 1.02:1 and 1.62:1 against the bare square — the king
+   in check was, in practice, unmarked once the ring had gone. Stronger tint,
+   and an inset casing so the square is bounded whatever shade it is. */
+.sq.check::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: color-mix(in srgb, var(--critical) 46%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mark-ink) 78%, transparent);
+}
+.sq .ring-check {
+  position: absolute; inset: 0; border: 2.5px solid var(--critical); border-radius: 50%;
+  pointer-events: none; animation: check-pulse .62s cubic-bezier(.16, 1, .3, 1) both;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--mark-ink) 80%, transparent);
+}
+@keyframes check-pulse {
+  from { transform: scale(.3);  opacity: .95; }
+  to   { transform: scale(1.6); opacity: 0; }
+}
+
+/* A captured piece is struck off the board, not dissolved. */
+@keyframes piece-struck {
+  0%   { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: scale(.5) rotate(16deg) translateY(9%); }
+}
+.pc.struck { animation: piece-struck .24s cubic-bezier(.4, 0, .9, .4) both; z-index: 2; }
+
+/* The weight of the piece settling onto the square. */
+@keyframes piece-land { from { transform: scale(1.13); } to { transform: none; } }
+.pc.landed { animation: piece-land .17s cubic-bezier(.16, 1, .3, 1) both; }
+
+/* Grading sweep: each mark resolves as the worker returns that ply. */
+@keyframes mark-resolve {
+  0%   { transform: scale(.25); opacity: .25; }
+  60%  { transform: scale(1.4); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.gm.resolved { animation: mark-resolve .32s cubic-bezier(.16, 1, .3, 1) both; }
+
+@keyframes view-arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+.view-in { animation: view-arrive .26s cubic-bezier(.16, 1, .3, 1) both; }
+
+/* Reduced motion keeps every state change legible and drops the travel. */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes verdict-release { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes knight-arrive   { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes piece-struck    { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes check-pulse     { from { opacity: .9; } to { opacity: 0; } }
+  @keyframes view-arrive     { from { opacity: 0; } to { opacity: 1; } }
+  .verdict.reveal { animation-duration: .22s; }
+  .verdict.reveal .chips, .verdict.reveal .headline { animation: none; }
+  .knight-in { animation-duration: .25s; }
+  .pc.landed, .gm.resolved { animation: none; }
+  @keyframes mark-settle { from { opacity: 0; } to { opacity: 1; } }
+  /* No set-up and no swap: the name is simply the name. */
+  .mark-in .mark-pc, .mark-in .sw i { animation: none; }
+  .mark-board, .sw i, .sw .mark-pc { transition: none; }
+  .brand:hover .mark-board { transform: none; }
+  .brand:hover .sw i { opacity: 1; transform: none; }
+  .brand:hover .mark-pc { opacity: 0; }
+  /* The tallies and the gauge grow into place on render. Travel is the
+     whole effect, so under reduce they are simply already drawn. */
+  .bar-fill { transition: none; }
+}
+</style>
+
+<!-- piece shapes: drawn here once, referenced by <use> on the board -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="sh-p">
+    <circle cx="22.5" cy="15" r="5.6"/>
+    <path d="M17.2 20.5c1.6 1.8 3.3 2.6 5.3 2.6s3.7-.8 5.3-2.6L30 31H15z"/>
+    <rect x="11.5" y="31" width="22" height="4.6" rx="1.6"/>
+  </g>
+  <g id="sh-r">
+    <path d="M13.5 11h4.2v3.8h3.1V11h2.4v3.8h3.1V11h4.2v9.2l-2.2 2.2v8.9h-12.6v-8.9l-2.2-2.2z"/>
+    <rect x="11" y="31" width="23" height="4.6" rx="1.6"/>
+    <path style="fill:none;stroke:var(--pc-detail);stroke-width:1.2;opacity:.6" d="M17.4 22.6h10.2"/>
+  </g>
+  <g id="sh-n">
+    <path d="M15.5 31v-5.4c0-2.8 1.6-4.9 3.9-6.2l-2.6-2.9-2.1 2.3-1.3-4.2c-.5-3.6 2.6-6.8 7-6.8 6.2 0 11.1 5.1 11.1 13.1V31z"/>
+    <rect x="11.5" y="31" width="22" height="4.6" rx="1.6"/>
+    <circle style="fill:var(--pc-detail);stroke:none" cx="19.6" cy="14.6" r="1.1"/>
+  </g>
+  <g id="sh-b">
+    <circle cx="22.5" cy="8.4" r="2.1"/>
+    <path d="M22.5 10.6c3.4 3.9 5.6 7 5.6 10.4 0 3-2.2 5.1-5.6 6-3.4-.9-5.6-3-5.6-6 0-3.4 2.2-6.5 5.6-10.4z"/>
+    <path d="M17.6 27.4h9.8L29 31H16z"/>
+    <rect x="11.5" y="31" width="22" height="4.6" rx="1.6"/>
+    <path style="fill:none;stroke:var(--pc-detail);stroke-width:1.2;opacity:.6" d="M22.5 15.4v5.6M20 18.2h5"/>
+  </g>
+  <g id="sh-q">
+    <path d="M11.8 18.6 14.6 31h15.8l2.8-12.4-5.4 4.6-3.3-9.4-3.3 9.4z"/>
+    <circle cx="11.8" cy="16.4" r="2.3"/>
+    <circle cx="22.5" cy="11.2" r="2.3"/>
+    <circle cx="33.2" cy="16.4" r="2.3"/>
+    <rect x="11" y="31" width="23" height="4.6" rx="1.6"/>
+  </g>
+  <g id="sh-k">
+    <path d="M21 7.4h3v3h3v3h-3v3h-3v-3h-3v-3h3z"/>
+    <path d="M13.4 20.4c5.6-4 12.2-4 18.2 0L29.8 31H15.2z"/>
+    <rect x="11" y="31" width="23" height="4.6" rx="1.6"/>
+  </g>
+
+  <!-- UI icons. One 16-unit box, one optical weight: every bar is 1.7 wide
+       and every triangle spans the same 9.2 of height, so the four transport
+       controls read as one set rather than four borrowed glyphs. -->
+  <g id="ic-first"><path d="M4 3.4h1.7v9.2H4zM12.2 3.4 6.6 8l5.6 4.6z"/></g>
+  <g id="ic-prev"><path d="M11 3.4 5.4 8 11 12.6z"/></g>
+  <g id="ic-next"><path d="M5 3.4 10.6 8 5 12.6z"/></g>
+  <g id="ic-last"><path d="M3.8 3.4 9.4 8l-5.6 4.6zM10.3 3.4H12v9.2h-1.7z"/></g>
+  <g id="ic-tag"><path d="M8 3.9 12.1 8 8 12.1 3.9 8z"/></g>
+
+  <!-- Grade marks. The tone carried the whole grade before, and the three
+       status hues collapse into one olive band under deuteranopia — critical
+       and good separate at 1.6:1 — so at 9px the sheet was unreadable for
+       roughly one man in twelve. Inaccuracy was worse again: the same amber
+       as mistake at half alpha, which is not a second channel, it is the
+       same channel turned down.
+
+       Four silhouettes instead, ordered by ink on the page the way the
+       grades are ordered by cost: a filled square is heaviest, then a
+       triangle, then an open ring, then the smallest solid dot. Same
+       16-unit box and same optical weight as the transport icons, so they
+       read as one hand. The hue stays exactly as it was and now reinforces
+       the shape rather than carrying it alone. -->
+  <g id="gm-blunder"><rect x="3.4" y="3.4" width="9.2" height="9.2" rx="1.1"/></g>
+  <g id="gm-mistake"><path d="M8 3.2 13.1 12.4H2.9z"/></g>
+  <g id="gm-inaccuracy"><circle cx="8" cy="8" r="3.9" style="fill:none;stroke:currentColor;stroke-width:1.7"/></g>
+  <g id="gm-good"><circle cx="8" cy="8" r="3.3"/></g>
+
+  <!-- The masthead mark: two squares of a board. A quarter turn trades the
+       filled squares for the empty ones, which is exactly what Flip does to
+       the board below — the brand making the product's own gesture. -->
+  <g id="mk-board"><rect x="0" y="0" width="8" height="8"/><rect x="8" y="8" width="8" height="8"/></g>
+  <g id="ic-sun">
+    <circle cx="8" cy="8" r="3.1"/>
+    <path d="M7.15 1h1.7v2.1h-1.7zM7.15 12.9h1.7V15h-1.7zM1 7.15h2.1v1.7H1zM12.9 7.15H15v1.7h-2.1zM3.0 4.2l1.2-1.2 1.5 1.5-1.2 1.2zM10.3 11.5l1.2-1.2 1.5 1.5-1.2 1.2zM11.5 5.7l-1.2-1.2 1.5-1.5 1.2 1.2zM4.2 13l-1.2-1.2 1.5-1.5 1.2 1.2z"/>
+  </g>
+  <g id="ic-moon"><path d="M13.3 10.1A5.7 5.7 0 0 1 6.1 2.8a5.9 5.9 0 1 0 7.2 7.3z"/></g>
+  <g id="ic-sound">
+    <path d="M3 6.2h2.4L8.7 3.3v9.4L5.4 9.8H3z"/>
+    <path style="fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round" d="M10.8 6.1a3.1 3.1 0 0 1 0 3.8M12.8 4.3a5.9 5.9 0 0 1 0 7.4"/>
+  </g>
+  <g id="ic-muted">
+    <path d="M3 6.2h2.4L8.7 3.3v9.4L5.4 9.8H3z"/>
+    <path style="fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round" d="m11 6.2 3.2 3.6M14.2 6.2 11 9.8"/>
+  </g>
+</defs></svg>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <span class="mark"><span class="sw" style="--i:0"><i>B</i><svg class="mark-pc" viewBox="0 0 45 45" aria-hidden="true"><use href="#sh-b"/></svg></span><b>lu</b><span class="sw" style="--i:1"><i>n</i><svg class="mark-pc" viewBox="0 0 45 45" aria-hidden="true"><use href="#sh-n"/></svg></span><b>de</b><span class="sw" style="--i:2"><i>r</i><svg class="mark-pc" viewBox="0 0 45 45" aria-hidden="true"><use href="#sh-r"/></svg></span> <svg class="mark-board" style="--i:3" viewBox="0 0 16 16" aria-hidden="true"><use href="#mk-board"/></svg> <b>Des</b><span class="sw" style="--i:4"><i>k</i><svg class="mark-pc" viewBox="0 0 45 45" aria-hidden="true"><use href="#sh-k"/></svg></span></span>
+      <span class="tag">rating 240 &middot; hang rate first</span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-games"   aria-selected="false" aria-controls="v-games">Games</button>
+      <button role="tab" id="tab-review"  aria-selected="true"  aria-controls="v-review">Review</button>
+      <button role="tab" id="tab-patterns"aria-selected="false" aria-controls="v-patterns">Patterns</button>
+    </div>
+    <div class="sound-ctl">
+      <button class="nav-btn theme-btn" id="t-sound" aria-haspopup="true" aria-expanded="false" aria-controls="sound-pop" title="Move sounds"></button>
+      <div class="sound-pop card" id="sound-pop" role="group" aria-label="Sound" hidden>
+        <button class="btn btn-sm" id="t-mute"></button>
+        <div class="sound-row">
+          <label class="label" for="t-level">Level</label>
+          <input type="range" id="t-level" min="0" max="100" step="5">
+          <span class="sound-val" id="t-level-v"></span>
+        </div>
+      </div>
+    </div>
+    <button class="nav-btn theme-btn" id="t-theme" title="Switch between light and dark"></button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===================== REVIEW ===================== -->
+  <section id="v-review" role="tabpanel" aria-labelledby="tab-review">
+    <div class="sect-head">
+      <h2 id="rv-title">Loading…</h2>
+      <span class="note" id="rv-sub"></span>
+      <span class="note" id="grade-progress" role="status" aria-live="polite" hidden></span>
+    </div>
+
+    <div class="review-grid">
+      <div class="col col-board">
+        <div class="board-wrap">
+          <div class="board" id="board"></div>
+        </div>
+        <div class="board-bar">
+          <button class="nav-btn" id="nav-start" title="First move (Home)" aria-label="First move"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><use href="#ic-first"/></svg></button>
+          <button class="nav-btn" id="nav-prev"  title="Previous (&larr;)" aria-label="Previous move"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><use href="#ic-prev"/></svg></button>
+          <button class="nav-btn" id="nav-next"  title="Next (&rarr;)" aria-label="Next move"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><use href="#ic-next"/></svg></button>
+          <button class="nav-btn" id="nav-end"   title="Last move (End)" aria-label="Last move"><svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><use href="#ic-last"/></svg></button>
+          <div class="toggle">
+            <button class="btn btn-sm" id="t-danger" aria-pressed="false" title="Ring every piece of yours that can be taken">Danger</button>
+            <button class="btn btn-sm" id="t-flip" title="Flip the board">Flip</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="col col-sheet card">
+        <div class="col-head">
+          <span class="label">Scoresheet</span>
+          <span class="label" id="sheet-count"></span>
+        </div>
+        <div class="sheet" id="sheet"></div>
+      </aside>
+
+      <div class="col col-analysis">
+        <div id="verdict-slot"></div>
+        <div id="intent-slot"></div>
+        <div class="card stats-card">
+          <span class="label">This game</span>
+          <div id="game-stats"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== GAMES ===================== -->
+  <section id="v-games" role="tabpanel" aria-labelledby="tab-games" hidden>
+    <div class="sect-head">
+      <h2>Bring your games in</h2>
+      <span class="note">lichess connects directly &middot; chess.com needs the PGN</span>
+    </div>
+
+    <div class="import-grid">
+      <div class="card import-card">
+        <h3>Lichess</h3>
+        <p>Pulls your recent games straight from your account. No password, no token — your public game record is enough.</p>
+        <input type="text" id="li-user" placeholder="lichess username" autocomplete="off" spellcheck="false">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-primary" id="li-go">Fetch last 15</button>
+        </div>
+        <div class="status" id="li-status" role="status" aria-live="polite"></div>
+        <p class="note">Needs to run from your own machine. A published artifact blocks outbound requests, so use the paste box there.</p>
+      </div>
+
+      <div class="card import-card">
+        <h3>Chess.com</h3>
+        <p>Chess.com's public API sends no CORS headers, so no browser-only app can read it. Run <code>npm run proxy</code> and point this at it.</p>
+        <input type="text" id="cc-proxy" placeholder="http://localhost:8787" autocomplete="off" spellcheck="false">
+        <input type="text" id="cc-user" placeholder="chess.com username" autocomplete="off" spellcheck="false">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-primary" id="cc-go">Fetch last 15</button>
+        </div>
+        <div class="status" id="cc-status" role="status" aria-live="polite"></div>
+        <p class="note">No proxy running? <b>Share</b> &rarr; <b>PGN</b> on any finished game, then paste it here.</p>
+      </div>
+
+      <div class="card import-card">
+        <h3>Paste or drop a PGN</h3>
+        <p>Works with any site. Multiple games in one file are fine — each is analysed separately.</p>
+        <textarea id="pgn-text" rows="4" placeholder="[Event &quot;...&quot;]&#10;1. e4 e5 2. Nf3 ..."></textarea>
+        <div class="side-pick" role="radiogroup" aria-label="Which side did you play?">
+          <span class="label">You played</span>
+          <button class="btn btn-sm" role="radio" data-side="" aria-checked="true">Work it out</button>
+          <button class="btn btn-sm" role="radio" data-side="w" aria-checked="false">White</button>
+          <button class="btn btn-sm" role="radio" data-side="b" aria-checked="false">Black</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" id="pgn-go">Analyse</button>
+          <label class="btn btn-sm" style="cursor:pointer">Choose file<input type="file" id="pgn-file" accept=".pgn,.txt" hidden></label>
+        </div>
+        <div class="status" id="pgn-status" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="sect-head">
+      <h2>Your games</h2>
+      <span class="note" id="games-count"></span>
+    </div>
+    <div class="card" id="games-list" style="overflow:hidden"></div>
+    <p class="note" style="margin-top:10px" id="store-note"></p>
+  </section>
+
+  <!-- ===================== PATTERNS ===================== -->
+  <section id="v-patterns" role="tabpanel" aria-labelledby="tab-patterns" hidden>
+    <!-- The page used to be headed "What keeps costing you" and then answer
+         it six tiles later. The heading is the answer now. -->
+    <div class="sheet-head">
+      <div>
+        <h2 id="pat-lead">Reading your record…</h2>
+        <p class="pat-evidence" id="pat-evidence"></p>
+        <p class="pat-caveat" id="pat-caveat" hidden></p>
+      </div>
+      <div class="pat-figure" id="pat-figure">
+        <span class="v" id="pat-hang-v">&mdash;</span>
+        <span class="k">hang rate, every game</span>
+        <div class="gauge" id="pat-gauge" role="img">
+          <div class="bar-track"><div class="bar-fill" id="pat-hang-fill" style="width:0"></div></div>
+          <div class="gauge-axis" aria-hidden="true"><span style="left:20%">4</span><span style="left:40%">8</span></div>
+        </div>
+        <p class="gauge-note">red over 8, amber over 4 &middot; scale to 20</p>
+      </div>
+    </div>
+
+    <div class="ledger" id="pat-ledger"></div>
+
+    <div class="sect-head">
+      <h2>Where the material goes</h2>
+      <span class="note">every error of yours, counted and weighed</span>
+    </div>
+    <div class="bars" id="pat-taxonomy"></div>
+
+    <div class="sect-head">
+      <h2>Hang rate, game by game</h2>
+      <span class="note">pieces left capturable per 100 of your moves</span>
+    </div>
+    <div class="pat-block"><div id="pat-trend"></div></div>
+
+    <div class="sect-head">
+      <h2>What you were thinking</h2>
+      <span class="note">from the moves you tagged</span>
+    </div>
+    <div class="bars" id="pat-intent"></div>
+  </section>
+</div>
+
+<!-- Engine and search only. The page runs it like any other script, and the
+     Web Worker is built from this element's own text, so the search exists
+     once in the file rather than twice. Nothing in here touches the DOM. -->
+<script id="bd-core">
+/*__ENGINE__*/
+/*__SHIM_A__*/
+/*__TACTICS__*/
+</script>
+
+<script>
+/*__SHIM_B__*/
+/*__COMMENTARY__*/
+/*__SHIM_C__*/
+/*__ANALYSIS__*/
+
+/* ============================================================
+   App
+   ============================================================ */
+(function () {
+  'use strict';
+
+  const FILES = 'abcdefgh';
+  const SHAPE = { p: 'sh-p', n: 'sh-n', b: 'sh-b', r: 'sh-r', q: 'sh-q', k: 'sh-k' };
+
+  // A sample game so the desk is never empty. Clearly marked, and
+  // replaced in the list as soon as real games are imported.
+  const SAMPLE_PGN = `[Event "Sample game"]
+[Site "blunder desk"]
+[Date "2026.09.28"]
+[White "you"]
+[Black "opponent"]
+[Result "0-1"]
+[WhiteElo "243"]
+[BlackElo "251"]
+[TimeControl "600+0"]
+
+1. e4 { [%clk 0:10:00] } e5 { [%clk 0:10:00] } 2. Bc4 { [%clk 0:09:52] } Nc6 { [%clk 0:09:48] }
+3. Qh5 { [%clk 0:09:40] } g6 { [%clk 0:09:30] } 4. Qf3 { [%clk 0:09:31] } Nf6 { [%clk 0:09:20] }
+5. Nc3 { [%clk 0:09:20] } Bg7 { [%clk 0:09:10] } 6. d3 { [%clk 0:09:10] } O-O { [%clk 0:09:00] }
+7. Bg5 { [%clk 0:09:02] } h6 { [%clk 0:08:50] } 8. Bxf6 { [%clk 0:08:40] } Bxf6 { [%clk 0:08:42] }
+9. Nd5 { [%clk 0:08:20] } Nd4 { [%clk 0:08:30] } 10. Qd1 { [%clk 0:08:18] } Nxc2+ { [%clk 0:08:20] }
+11. Kd2 { [%clk 0:08:10] } Nxa1 { [%clk 0:08:12] } 12. Nxf6+ { [%clk 0:07:50] } Qxf6 { [%clk 0:08:00] }
+13. Qg4 { [%clk 0:07:40] } d6 { [%clk 0:07:50] } 14. f3 { [%clk 0:07:30] } Be6 { [%clk 0:07:40] }
+15. Bxe6 { [%clk 0:07:20] } Qxf3 { [%clk 0:07:30] } 16. Bxf7+ { [%clk 0:07:10] } Rxf7 { [%clk 0:07:20] }
+17. Qxf3 { [%clk 0:07:00] } Rxf3 { [%clk 0:07:10] } 18. gxf3 { [%clk 0:06:50] } Rf8 { [%clk 0:07:00] }
+19. Ne2 { [%clk 0:06:40] } Rxf3 { [%clk 0:06:50] } 20. Nf4 { [%clk 0:06:38] } exf4 { [%clk 0:06:45] } 0-1`;
+
+  const INTENT_KINDS = [
+    { kind: 'protect',     label: 'Protect a piece', needsTarget: 'own',   hint: 'Tap the piece you were trying to save.' },
+    { kind: 'attack',      label: 'Attack a piece',  needsTarget: 'enemy', hint: 'Tap the piece you were going after. Their king counts — that is a check.' },
+    { kind: 'develop',     label: 'Develop' },
+    { kind: 'king_safety', label: 'King safety' },
+    { kind: 'trade',       label: 'Trade pieces' },
+    { kind: 'free',        label: 'Free move — no idea' },
+    { kind: 'forget',      label: "Don't remember" }
+  ];
+
+  const state = {
+    tab: 'review',
+    games: [],
+    currentId: null,
+    ply: -1,            // -1 = starting position
+    flipped: false,
+    danger: false,
+    picking: null,      // {kind}
+    revealKey: null,    // ply whose verdict was just unlocked
+    grading: false,
+    intentions: {},     // `${gameId}__${ply}` -> record
+    db: null
+  };
+
+  const $ = s => document.querySelector(s);
+  const el = (tag, cls, txt) => { const n = document.createElement(tag); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
+
+  /* ---------- game construction ---------- */
+  let gameSeq = 0;
+  /* Which side the user played, or null when the game does not say.
+
+     Returning null matters: this used to fall through to White whenever it
+     could not tell, and since the paste flow passed no name, that fallback
+     was the only path it ever took. heroColor feeds aggregate(), so a game
+     you played as Black silently reported your opponent's hang rate, your
+     opponent's blunders, and an inverted result. "I cannot tell" has to be
+     an answer the caller can see, so it can ask instead of guessing. */
+  function resolveHero(headers, hint) {
+    const c = hint && hint.color;
+    if (c === 'w' || c === 'b') return c;
+    const h = headers || {};
+    const n = String((hint && hint.name) || '').trim().toLowerCase();
+    if (!n) return null;
+    if (String(h.White || '').toLowerCase() === n) return 'w';
+    if (String(h.Black || '').toLowerCase() === n) return 'b';
+    return null;
+  }
+
+  function buildGame(parsed, source, heroHint) {
+    const h = parsed.headers || {};
+    const resolved = resolveHero(h, heroHint);
+    const hero = resolved || 'w';
+    const analysis = analyzeGame(parsed, hero);
+    if (analysis.error) return { error: analysis.error };
+    const id = (source === 'sample' ? 'sample' : 'g' + (++gameSeq) + '-' + Date.now().toString(36));
+    const prompts = pickIntentionPrompts(analysis.plies, 5).map(p => p.ply);
+    return {
+      id, source, heroColor: hero, heroGuessed: !resolved, headers: h,
+      plies: analysis.plies, stats: analysis.stats, prompts,
+      white: h.White || 'White', black: h.Black || 'Black',
+      result: h.Result || '*',
+      date: h.Date || '',
+      opponent: hero === 'w' ? (h.Black || 'opponent') : (h.White || 'opponent')
+    };
+  }
+
+  function heroResult(g) {
+    if (g.result === '1/2-1/2') return 'draw';
+    if (g.result === '1-0') return g.heroColor === 'w' ? 'win' : 'loss';
+    if (g.result === '0-1') return g.heroColor === 'b' ? 'win' : 'loss';
+    return 'draw';
+  }
+  function current() { return state.games.find(g => g.id === state.currentId) || state.games[0]; }
+
+  /* ---------- board rendering ---------- */
+  const boardEl = $('#board');
+  let squareEls = {};
+  // What is currently drawn on each square, as colour+type ('wp', 'bk', '').
+  // paint() reconciles against this instead of rebuilding the board, so a
+  // piece that did not move keeps the element it already had.
+  let painted = {};
+  // The destination piece the running animation is holding hidden. It is the
+  // one element a repaint must not reveal early.
+  let flying = null;
+  // Settles whatever move is mid-flight. Null when nothing is animating.
+  let endAnimation = null;
+
+  function buildBoard() {
+    boardEl.textContent = '';
+    squareEls = {};
+    // Every square element is new, so nothing on the old board survives.
+    painted = {};
+    flying = null;
+    const order = [];
+    for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) order.push({ r, f });
+    for (const { r, f } of order) {
+      const rr = state.flipped ? 7 - r : r;
+      const ff = state.flipped ? 7 - f : f;
+      const name = FILES[ff] + (8 - rr);
+      const sq = el('div', 'sq ' + ((rr + ff) % 2 === 0 ? 'l' : 'd'));
+      sq.dataset.sq = name;
+      if ((state.flipped ? r === 0 : r === 7)) {
+        const c = el('span', 'coord f', FILES[ff]); sq.appendChild(c);
+      }
+      if ((state.flipped ? f === 7 : f === 0)) {
+        const c = el('span', 'coord r', String(8 - rr)); sq.appendChild(c);
+      }
+      sq.addEventListener('click', () => onSquareClick(name));
+      boardEl.appendChild(sq);
+      squareEls[name] = sq;
+    }
+  }
+
+  function icon(id, cls) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('class', cls || 'ic');
+    svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#' + id);
+    svg.appendChild(use);
+    return svg;
+  }
+
+  function pieceSvg(type, color) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 45 45');
+    svg.setAttribute('class', 'pc ' + color);
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#' + SHAPE[type]);
+    svg.appendChild(use);
+    return svg;
+  }
+
+  /* Markers only. The pieces are reconciled in paint(), not cleared here —
+     wiping them was what rebuilt all 32 on every repaint. */
+  function clearSquares() {
+    for (const name in squareEls) {
+      const s = squareEls[name];
+      s.className = s.className.replace(/\s*(from|to|danger|free|pickable|picked|check)/g, '');
+      s.querySelectorAll('.ring, .ring-check').forEach(n => n.remove());
+    }
+  }
+
+  /* The squares whose occupant differs between two maps — and only those.
+     A quiet move names two, a capture two, castling four. Anything that
+     reports the whole board is the bug this replaced. */
+  function diffOccupancy(prev, next) {
+    const out = [];
+    for (const name in next) if (prev[name] !== next[name]) out.push(name);
+    return out;
+  }
+
+  function paint(fen, opts = {}) {
+    // Any move still in the air belongs to the position being replaced.
+    // Settling it here means every repaint path — a step, a resize, Home,
+    // the danger toggle, grading finishing — lands it, instead of leaving
+    // fliers stacked up over the board while the keys are held down.
+    if (endAnimation) endAnimation();
+    clearSquares();
+    const pos = new Position(fen);
+    const next = {};
+    for (const name in squareEls) {
+      const p = pos.get(name);
+      next[name] = p ? p.color + p.type : '';
+    }
+    for (const name of diffOccupancy(painted, next)) {
+      const sq = squareEls[name];
+      // querySelectorAll, not querySelector: a struck piece is briefly a
+      // second .pc on its square while it is being animated off.
+      sq.querySelectorAll('.pc').forEach(n => { if (n === flying) flying = null; n.remove(); });
+      const p = pos.get(name);
+      if (p) sq.appendChild(pieceSvg(p.type, p.color));
+    }
+    painted = next;
+    if (opts.from && squareEls[opts.from]) squareEls[opts.from].className += ' from';
+    if (opts.to && squareEls[opts.to]) squareEls[opts.to].className += ' to';
+    if (opts.danger) for (const d of opts.danger) {
+      const s = squareEls[d.square];
+      if (s) { s.className += ' danger'; s.appendChild(el('div', 'ring')); }
+    }
+    if (opts.free) for (const d of opts.free) {
+      const s = squareEls[d.square];
+      if (s) { s.className += ' free'; s.appendChild(el('div', 'ring')); }
+    }
+    if (opts.pickable) for (const name of opts.pickable) {
+      const s = squareEls[name];
+      if (s) s.className += ' pickable';
+    }
+    if (opts.check && squareEls[opts.check]) {
+      const s = squareEls[opts.check];
+      s.className += ' check';
+      if (opts.pulse) s.appendChild(el('div', 'ring-check'));
+    }
+    if (opts.picked && squareEls[opts.picked]) squareEls[opts.picked].className += ' picked';
+  }
+
+  /* Where the flying piece starts and how far it travels, in the board's own
+     coordinates. Pure, so the geometry can be checked without a browser:
+     every term is a rect the caller measured. */
+  function flierBox(ar, br, wrap) {
+    const pad = ar.width * 0.07;
+    return {
+      size: ar.width * 0.86,
+      left: ar.left - wrap.left + pad,
+      top:  ar.top  - wrap.top  + pad,
+      dx:   br.left - ar.left,
+      dy:   br.top  - ar.top
+    };
+  }
+
+  // Slide the moved piece from one square to the other, then settle.
+  function animateTo(fenBefore, fenAfter, from, to, opts) {
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const a = squareEls[from], b = squareEls[to];
+    if (reduce || !a || !b) { paint(fenAfter, opts); return; }
+    const before = new Position(fenBefore);
+    const moving = before.get(from);
+    if (!moving) { paint(fenAfter, opts); return; }
+
+    paint(fenAfter, opts);
+    const landed = b.querySelector('.pc');
+    if (landed) { landed.style.visibility = 'hidden'; flying = landed; }
+
+    // A captured piece is struck off the board. It has already been painted
+    // out of the position, so it is re-drawn on its square purely to be hit.
+    const victim = before.get(to);
+    if (victim && victim.color !== moving.color) {
+      const v = pieceSvg(victim.type, victim.color);
+      v.classList.add('struck');
+      b.appendChild(v);
+      setTimeout(() => v.remove(), 420);
+    }
+
+    const flier = pieceSvg(moving.type, moving.color);
+    flier.classList.add('flier');
+    const ar = a.getBoundingClientRect(), br = b.getBoundingClientRect();
+    const wrap = boardEl.getBoundingClientRect();
+    const box = flierBox(ar, br, wrap);
+    flier.style.position = 'absolute';
+    // Longhands only. .pc sets `inset: 5.5%`, and clearing it with the
+    // `inset` shorthand wrote top/right/bottom/left in one go — which, on the
+    // line after left and top were set, reset them both to auto. The flier
+    // then had no position at all and fell back to its static one: the
+    // board's top-left corner, from where it slid off by the move's delta.
+    flier.style.right = 'auto';
+    flier.style.bottom = 'auto';
+    flier.style.width = box.size + 'px'; flier.style.height = box.size + 'px';
+    flier.style.left = box.left + 'px';
+    flier.style.top = box.top + 'px';
+    boardEl.appendChild(flier);
+    const { dx, dy } = box;
+    requestAnimationFrame(() => { flier.style.transform = `translate(${dx}px, ${dy}px)`; });
+    // Idempotent: the transition, the fallback timer and a repaint cutting
+    // the move short all route through it, and whichever arrives first wins.
+    const done = () => {
+      if (endAnimation === done) endAnimation = null;
+      if (flying === landed) flying = null;
+      flier.remove();
+      if (landed) { landed.style.visibility = ''; landed.classList.add('landed'); }
+    };
+    endAnimation = done;
+    flier.addEventListener('transitionend', done, { once: true });
+    setTimeout(done, 400);
+  }
+
+  /* Re-analyse a game as the other player. Everything the desk reports —
+     hang rate, who blundered, win or loss, which moves get asked about — is
+     computed for heroColor, so this is a full rebuild rather than a label
+     swap. The id is kept so the game stays open and stays in place. */
+  function switchSides(g) {
+    const parsed = g.pgnText && parsePgn(g.pgnText)[0];
+    if (!parsed) return;
+    const rebuilt = buildGame(parsed, g.source, { color: g.heroColor === 'w' ? 'b' : 'w' });
+    if (rebuilt.error) return;
+    rebuilt.id = g.id;
+    rebuilt.pgnText = g.pgnText;
+    rebuilt.heroGuessed = false;          // you told it; it is not a guess now
+    const i = state.games.findIndex(x => x.id === g.id);
+    if (i < 0) return;
+    state.games[i] = rebuilt;
+    // The tags answered "what were you trying to do" about the other player's
+    // moves, so they are not yours to keep.
+    for (const k of Object.keys(state.intentions)) {
+      if (k.indexOf(g.id + '__') === 0) { delete state.intentions[k]; saveIntention(k, null); }
+    }
+    state.ply = -1;
+    persistGame(rebuilt);
+    renderReview(false);
+    renderGames();
+    renderPatterns();
+    gradeInBackground(rebuilt);
+  }
+
+  /* ---------- review view ---------- */
+  function plyAt(g, i) { return i < 0 ? null : g.plies[i]; }
+  function fenAt(g, i) { return i < 0 ? new Position().fen() : g.plies[i].fenAfter; }
+
+  function renderReview(animate) {
+    const g = current();
+    if (!g) return;
+    // the game may have been swapped out from under the current index
+    if (state.currentId !== g.id) { state.currentId = g.id; state.ply = -1; }
+    if (state.ply > g.plies.length - 1) state.ply = g.plies.length - 1;
+    $('#rv-title').textContent = g.source === 'sample' ? 'Sample game' : `vs ${g.opponent}`;
+    const r = heroResult(g);
+    const sub = $('#rv-sub');
+    sub.textContent = '';
+    // The side is a control, not a caption: this line is where you find out
+    // the desk guessed wrong, so it is where you can say so.
+    const flip = el('button', 'side-flip' + (g.heroGuessed ? ' side-guessed' : ''),
+                    g.heroColor === 'w' ? 'you had white' : 'you had black');
+    flip.title = g.heroGuessed
+      ? 'The PGN did not say which side you were, so this was assumed. Click to switch.'
+      : 'Click if you played the other side';
+    flip.setAttribute('aria-label',
+      (g.heroColor === 'w' ? 'You played white' : 'You played black') + '. Switch sides and re-analyse.');
+    flip.addEventListener('click', () => switchSides(g));
+    sub.appendChild(flip);
+    sub.appendChild(document.createTextNode(
+      ` · ${r} · ${g.plies.length} plies` + (g.source === 'sample' ? ' · example data' : '')));
+
+    // The title rides a knight's path in when the game changes — never on an
+    // ordinary step, which would make it furniture that twitches.
+    if (titleShownFor !== g.id) {
+      titleShownFor = g.id;
+      replay($('#rv-title'), 'knight-in');
+    }
+
+    const p = plyAt(g, state.ply);
+    const opts = {};
+    if (p) {
+      opts.from = p.from; opts.to = p.to;
+      // The side to move after the move is the side now in check.
+      if (p.motifs && p.motifs.check) {
+        const after = new Position(p.fenAfter);
+        if (after.kings[after.turn] !== -1) {
+          opts.check = algebraic(after.kings[after.turn]);
+          opts.pulse = !!animate;
+        }
+      }
+    }
+    if (animate && p) playMove(p);
+
+    if (state.picking) {
+      // While picking a target we show the position as it stood BEFORE
+      // the move, because that is the board the player was looking at.
+      // The board is showing the position before the move, so marking where
+      // that move will land is answering the question we are asking. It also
+      // keeps the trace off the squares the pick markers own.
+      delete opts.from; delete opts.to;
+      const before = p ? p.fenBefore : fenAt(g, state.ply);
+      const pos = new Position(before);
+      const want = INTENT_KINDS.find(k => k.kind === state.picking.kind).needsTarget;
+      const colour = want === 'own' ? g.heroColor : (g.heroColor === 'w' ? 'b' : 'w');
+      // Their king is a legitimate attack target — that claim is "I was
+      // giving check". Your own king is not a "protect" target: it can
+      // never be captured, so there is no material claim to check.
+      opts.pickable = pos.piecesOf(colour)
+        .filter(x => x.type !== 'k' || want === 'enemy').map(x => x.name);
+      opts.picked = state.picking.target;
+      paint(before, opts);
+    } else {
+      if (state.danger && p && p.isHero) opts.danger = p.looseAfter;
+      if (state.danger && p && p.isHero) opts.free = p.freeBefore.filter(f => f.square !== p.to);
+      const fen = fenAt(g, state.ply);
+      if (animate && p) animateTo(p.fenBefore, fen, p.from, p.to, opts);
+      else paint(fen, opts);
+    }
+
+    renderSheet(g);
+    renderVerdict(g, p);
+    renderIntent(g, p);
+    renderGameStats(g);
+  }
+
+  let sheetScrolledTo = null, titleShownFor = null;
+
+  // Restart a CSS animation on an element that may already carry the class.
+  function replay(node, cls) {
+    if (!node) return;
+    node.classList.remove(cls);
+    void node.offsetWidth;        // forces the style recalc that resets it
+    node.classList.add(cls);
+  }
+
+  // Which of the four marks a ply carries, or '' for a ply with no verdict.
+  function gradeKind(pl) {
+    if (pl.grade === 'blunder') return 'blunder';
+    if (pl.grade === 'mistake') return 'mistake';
+    if (pl.grade === 'inaccuracy' || pl.grade === 'missed') return 'inaccuracy';
+    if (pl.grade === 'best' || pl.grade === 'strong') return 'good';
+    if (pl.isHero && pl.severity) return pl.severity === 'minor' ? '' : pl.severity;
+    if (pl.isHero && (pl.tags.includes('punished') || pl.tags.includes('good_capture'))) return 'good';
+    return '';
+  }
+
+  const GRADE_MARK = {
+    blunder:    { shape: 'gm-blunder',    word: 'blunder' },
+    mistake:    { shape: 'gm-mistake',    word: 'mistake' },
+    inaccuracy: { shape: 'gm-inaccuracy', word: 'inaccuracy' },
+    good:       { shape: 'gm-good',       word: 'strong move' }
+  };
+
+  // The mark element for a ply: the glyph when it has a verdict, an empty
+  // box of the same size when it does not, so the column never shifts.
+  function gradeMark(pl) {
+    const kind = gradeKind(pl);
+    const def = GRADE_MARK[kind];
+    if (!def) { const s = el('span', 'gm'); s.dataset.kind = ''; return s; }
+    const svg = icon(def.shape, 'gm ' + kind);
+    svg.dataset.kind = kind;
+    return svg;
+  }
+
+  // The move button's accessible name. Shape and hue both carry the grade on
+  // screen; neither reaches a screen reader, so the word goes in the label.
+  function labelMove(b, pl) {
+    const def = GRADE_MARK[gradeKind(pl)];
+    b.setAttribute('aria-label', pl.san + (def ? ', ' + def.word : ''));
+  }
+
+  // Grading only ever changes one ply's mark. Repainting the whole sheet for
+  // it rebuilt ~140 nodes per tick and reset the scroll under the cursor.
+  function refreshDot(ply, i) {
+    const b = $(`#sheet .mv[data-ply="${i}"]`);
+    if (!b) return;
+    const old = b.querySelector('.gm');
+    if (!old) return;
+    const kind = gradeKind(ply);
+    labelMove(b, ply);
+    if (old.dataset.kind === kind) return;   // nothing to redraw
+    const next = gradeMark(ply);
+    old.replaceWith(next);
+    replay(next, 'resolved');
+  }
+
+  function renderSheet(g) {
+    const host = $('#sheet');
+    host.textContent = '';
+    $('#sheet-count').textContent = `${Math.ceil(g.plies.length / 2)} moves`;
+    for (let i = 0; i < g.plies.length; i += 2) {
+      host.appendChild(el('span', 'sheet-num', String(Math.floor(i / 2) + 1)));
+      for (const j of [i, i + 1]) {
+        const pl = g.plies[j];
+        // Keeps the two move columns aligned when a game ends on white's move.
+        if (!pl) { host.appendChild(el('span', 'sheet-gap')); continue; }
+        const b = el('button', 'mv');
+        b.dataset.ply = j;
+        b.setAttribute('aria-current', String(j === state.ply));
+        b.appendChild(gradeMark(pl));
+        b.appendChild(el('span', null, pl.san));
+        labelMove(b, pl);
+        if (state.intentions[g.id + '__' + j]) {
+          const t = icon('ic-tag', 'ic tagged');
+          t.setAttribute('aria-label', 'tagged');
+          b.appendChild(t);
+        }
+        b.addEventListener('click', () => { const step = j === state.ply + 1; state.ply = j; state.picking = null; renderReview(step); });
+        host.appendChild(b);
+      }
+    }
+    // Only chase the current move when it actually moved. Scrolling on every
+    // render made the sheet jump under the cursor while grading repainted it.
+    if (sheetScrolledTo !== state.ply) {
+      const cur = host.querySelector('.mv[aria-current="true"]');
+      // `inline` centres the current move in the horizontal strip on phones;
+      // `block: nearest` keeps the ruled column from jumping on wide screens.
+      if (cur) cur.scrollIntoView({ block: 'nearest', inline: 'center' });
+      sheetScrolledTo = state.ply;
+    }
+  }
+
+  function renderVerdict(g, p) {
+    const slot = $('#verdict-slot');
+    slot.textContent = '';
+    if (!p) {
+      const c = el('div', 'card verdict');
+      c.appendChild(el('span', 'label', 'Starting position'));
+      c.appendChild(el('p', 'headline', 'Step through with the arrow keys. The marks on the scoresheet show where material changed hands — the heavier the mark, the more it cost.'));
+      slot.appendChild(c);
+      return;
+    }
+
+    // Hold the commentary back on a move we are about to ask about, so
+    // reading the verdict cannot contaminate the answer.
+    const key = g.id + '__' + p.ply;
+    const awaitingIntent = p.isHero && g.prompts.includes(p.ply) && !state.intentions[key];
+    if (awaitingIntent) {
+      const hold = el('div', 'card verdict');
+      hold.appendChild(el('span', 'note notation', `${p.moveNumber}${p.color === 'w' ? '.' : '…'} ${p.san} · your move`));
+      const h = el('p', 'headline', 'Answer first, then the verdict.');
+      hold.appendChild(h);
+      const sub = el('p', 'muted', 'The analysis for this move is hidden until you say what you were going for — otherwise hindsight writes the answer for you.');
+      sub.className = 'note'; sub.style.margin = '8px 0 0';
+      hold.appendChild(sub);
+      slot.appendChild(hold);
+      return;
+    }
+
+    const c = el('div', 'card verdict');
+    // Only the verdict that was actually just released animates; stepping
+    // onto an already-answered move must not replay the moment.
+    if (state.revealKey === key) { c.classList.add('reveal'); state.revealKey = null; }
+    const head = el('div');
+    head.style.cssText = 'display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap';
+    head.appendChild(el('span', 'note notation', `${p.moveNumber}${p.color === 'w' ? '.' : '…'} ${p.san} · ${p.isHero ? 'your move' : 'their move'}`));
+    // Clock deltas arrive as floating-point subtraction, so they print as
+    // 5.300000000000068 unless they are rounded at the point of display.
+    if (p.spent != null && p.spent >= 0) head.appendChild(el('span', 'note', `${Math.round(p.spent)}s on the clock`));
+    c.appendChild(head);
+
+    const chips = el('div', 'chips');
+    chips.style.marginTop = '8px';
+    if (p.grade && GRADES[p.grade]) {
+      const gr = GRADES[p.grade];
+      const chip = el('span', 'chip ' + gr.tone, gr.label);
+      chip.style.fontWeight = '600';
+      chips.appendChild(chip);
+    }
+    for (const t of p.tags) {
+      const def = TAGS[t];
+      if (!def) continue;
+      chips.appendChild(el('span', 'chip ' + def.tone, def.label));
+    }
+    if (!p.grade && p.isHero && !p.tags.length) chips.appendChild(el('span', 'chip info', 'Nothing hanging'));
+    if (chips.childNodes.length) c.appendChild(chips);
+
+    // the commentary line — the thing that makes this read as analysis
+    if (p.comment) {
+      c.appendChild(el('p', 'headline', p.comment));
+    } else if (p.headline) {
+      c.appendChild(el('p', 'headline', p.headline));
+    } else if (!state.grading) {
+      c.appendChild(el('p', 'headline', p.isHero
+        ? 'Nothing of yours can be taken here.'
+        : 'A quiet move from your opponent.'));
+    }
+
+    // Once mate is on the board there is no better move to suggest and no
+    // static claim left worth correcting, so the secondary notes are noise.
+    const notes = [];
+    let wantLine = false;
+    if (!p.mateDelivered) {
+      if (p.comment && p.headline && p.headline !== p.comment) notes.push(p.headline);
+      if (p.swing != null && p.swing >= 70 && p.bestSan && p.bestSan !== p.san) {
+        notes.push(`Best was ${p.bestSan}, worth about ${(p.swing / 100).toFixed(1)} pawns more.`);
+        wantLine = true;
+      }
+      if (p.staticOverridden) {
+        notes.push('A capture that looked free here turns out not to be, once the reply is played out.');
+      }
+    }
+    for (const n of notes) c.appendChild(el('p', 'verdict-note', n));
+
+    // Naming a better move without saying what it does is half an answer.
+    if (wantLine) {
+      const box = el('div', 'best-why');
+      if (p.bestWhy) {
+        box.appendChild(el('p', 'best-reason', p.bestWhy));
+        if (p.bestLine && p.bestLine.length) {
+          const row = el('p', 'best-move-line');
+          row.appendChild(el('span', 'label', 'Line'));
+          row.appendChild(el('span', 'notation', formatLine(p.bestLine, p.moveNumber, p.color)));
+          box.appendChild(row);
+        }
+      } else {
+        box.appendChild(el('p', 'best-reason muted', 'Working out what it leads to…'));
+        requestBestLine(g, p);
+      }
+      c.appendChild(box);
+    }
+    if (state.grading && !p.comment) {
+      const sub = el('p', 'muted', 'Looking deeper at this one…');
+      sub.className = 'verdict-note';
+      c.appendChild(sub);
+    }
+    slot.appendChild(c);
+  }
+
+  /* One request per ply, ever. bestLine is undefined until asked for and null
+     while the worker has it, so a render storm during grading cannot queue the
+     same ply twice. */
+  function requestBestLine(g, p) {
+    if (p.bestLine !== undefined) return;
+    p.bestLine = null;
+    askLine(p.fenBefore, 3, 4).then(r => {
+      p.bestLine = r.line || [];
+      const e = explainBest(p.fenBefore, p.bestLine);
+      p.bestWhy = e.why;
+      // The board may have moved on while the worker was thinking.
+      if (state.currentId === g.id && state.ply === p.ply) renderVerdict(g, p);
+    });
+  }
+
+  /* ---------- intention capture ---------- */
+  function renderIntent(g, p) {
+    const slot = $('#intent-slot');
+    slot.textContent = '';
+    if (!p || !p.isHero) return;
+    const key = g.id + '__' + p.ply;
+    const saved = state.intentions[key];
+
+    const box = el('div', 'intent');
+
+    if (saved) {
+      box.appendChild(el('h3', null, `You said: ${labelFor(saved)}`));
+      if (saved.verdict) {
+        const chips = el('div', 'chips');
+        chips.style.marginTop = '9px';
+        chips.appendChild(el('span', 'chip ' + saved.verdict.tone, saved.verdict.label));
+        box.appendChild(chips);
+        if (saved.verdict.detail) {
+          const d = el('p', null, saved.verdict.detail);
+          d.className = 'intent-detail';
+          box.appendChild(d);
+        }
+      }
+      const again = el('button', 'btn btn-sm', 'Change answer');
+      again.style.marginTop = '11px';
+      again.addEventListener('click', () => { delete state.intentions[key]; saveIntention(key, null); renderReview(false); });
+      box.appendChild(again);
+      slot.appendChild(box);
+      return;
+    }
+
+    if (state.picking) {
+      const k = INTENT_KINDS.find(x => x.kind === state.picking.kind);
+      box.appendChild(el('h3', null, k.label));
+      const hint = el('div', 'picking', k.hint + ' The board is showing the position as it was before you moved.');
+      box.appendChild(hint);
+      const cancel = el('button', 'btn btn-sm', 'Back');
+      cancel.style.marginTop = '11px';
+      cancel.addEventListener('click', () => { state.picking = null; renderReview(false); });
+      box.appendChild(cancel);
+      slot.appendChild(box);
+      return;
+    }
+
+    const prompted = g.prompts.includes(p.ply);
+    box.appendChild(el('h3', null, 'What were you trying to do?'));
+    // The prompted/optional state used to ride above the heading as a kicker.
+    // It is the same fact either way, and it reads better as the sentence that
+    // explains why answering matters.
+    box.appendChild(el('p', 'note intent-sub', prompted
+      ? 'Answer before reading the verdict above — the point is to catch the reasoning, not the result.'
+      : 'Optional. Tag it if you want this move counted in your patterns.'));
+
+    const opts = el('div', 'opts');
+    for (const k of INTENT_KINDS) {
+      const b = el('button', 'opt', k.label);
+      b.addEventListener('click', () => {
+        if (k.needsTarget) { state.picking = { kind: k.kind, target: null }; renderReview(false); }
+        else commitIntention(g, p, { kind: k.kind });
+      });
+      opts.appendChild(b);
+    }
+    box.appendChild(opts);
+    slot.appendChild(box);
+  }
+
+  function labelFor(rec) {
+    const k = INTENT_KINDS.find(x => x.kind === rec.kind);
+    const base = k ? k.label : rec.kind;
+    return rec.target ? `${base} — ${rec.target}` : base;
+  }
+
+  function onSquareClick(name) {
+    if (!state.picking) return;
+    const g = current();
+    const p = plyAt(g, state.ply);
+    if (!p) return;
+    const pos = new Position(p.fenBefore);
+    const piece = pos.get(name);
+    const want = INTENT_KINDS.find(k => k.kind === state.picking.kind).needsTarget;
+    const colour = want === 'own' ? g.heroColor : (g.heroColor === 'w' ? 'b' : 'w');
+    if (!piece || piece.color !== colour) return;
+    if (piece.type === 'k' && want !== 'enemy') return;
+    commitIntention(g, p, { kind: state.picking.kind, target: name });
+  }
+
+  function commitIntention(g, p, rec) {
+    if (rec.kind !== 'forget') {
+      rec.verdict = verifyIntention(p, rec);
+    } else {
+      rec.verdict = { tone: 'info', label: 'Logged', detail: 'Worth noticing on its own — if this keeps happening you are moving faster than you can remember thinking.' };
+    }
+    rec.at = Date.now();
+    const key = g.id + '__' + p.ply;
+    state.intentions[key] = rec;
+    state.picking = null;
+    state.revealKey = key;
+    saveIntention(key, rec);
+    renderReview(false);
+    renderPatterns();
+  }
+
+  function renderGameStats(g) {
+    const host = $('#game-stats');
+    host.textContent = '';
+    const s = g.stats;
+    const rows = [
+      ['Hang rate', `${s.hangRate}%`, `${s.hangs} of ${s.heroMoves} moves`],
+      ['Punish rate', s.punishRate == null ? '—' : `${s.punishRate}%`, `took ${s.punished} of ${s.offered} free pieces`],
+      ['Material dropped', `${(s.hangCp / 100).toFixed(1)}`, 'pawns, from hung pieces'],
+      ['Material left', `${(s.missedCp / 100).toFixed(1)}`, 'pawns, free and not taken'],
+      ['First big error', s.collapseMove ? `move ${s.collapseMove}` : '—', s.collapseMove ? 'where it turned' : 'no blunder found']
+    ];
+    for (const [k, v, n] of rows) {
+      const row = el('div');
+      row.style.cssText = 'display:flex;justify-content:space-between;gap:10px;align-items:baseline';
+      const left = el('span', null, k);
+      const right = el('span');
+      right.style.cssText = 'font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums';
+      right.textContent = v;
+      row.appendChild(left); row.appendChild(right);
+      host.appendChild(row);
+      const note = el('div', 'muted', n);
+      note.className = 'muted stat-note';
+      host.appendChild(note);
+    }
+    if (s.fast) {
+      const note = el('div', 'muted', `${s.fastBlunders} of your ${s.fast} fastest moves lost material.`);
+      note.className = 'muted stat-foot';
+      host.appendChild(note);
+    }
+  }
+
+  /* ---------- games view ---------- */
+  function renderGames() {
+    const host = $('#games-list');
+    host.textContent = '';
+    $('#games-count').textContent = `${state.games.length} analysed`;
+    if (!state.games.length) {
+      host.appendChild(el('div', 'empty', 'Nothing here yet. Import from lichess or paste a PGN above.'));
+      return;
+    }
+    for (const g of state.games) {
+      const row = el('button', 'game-row');
+      const r = heroResult(g);
+      const res = el('span', 'res ' + r, r === 'win' ? 'W' : r === 'loss' ? 'L' : 'D');
+      row.appendChild(res);
+      const meta = el('div', 'meta');
+      meta.appendChild(el('b', null, g.source === 'sample' ? 'Sample game — Qh5 opening' : `vs ${g.opponent}`));
+      meta.appendChild(el('span', null,
+        `${g.heroColor === 'w' ? 'white' : 'black'} · ${g.date || 'undated'} · ${Math.ceil(g.plies.length / 2)} moves` +
+        (g.source === 'sample' ? ' · example' : '')));
+      row.appendChild(meta);
+      const score = el('div', 'score');
+      // The same thresholds the Patterns gauge states out loud. This used to
+      // be hardcoded critical, so a clean game and a disastrous one wore the
+      // same red and the colour meant nothing.
+      const hr = g.stats.hangRate;
+      score.appendChild(el('div', 'score-v ' + (hr > 8 ? 'crit' : hr > 4 ? 'warn' : 'good'), hr + '%'));
+      score.appendChild(el('div', 'label', 'hang rate'));
+      row.appendChild(score);
+      row.addEventListener('click', () => {
+        state.currentId = g.id; state.ply = -1; state.picking = null;
+        setTab('review'); renderReview(false); gradeInBackground(g);
+      });
+      host.appendChild(row);
+    }
+  }
+
+  /* ---------- patterns view ---------- */
+
+  /* The habit behind each tag, in the second person and the present tense,
+     because this page is about what keeps happening rather than what
+     happened once. The taxonomy label states the finding; this states the
+     reader's part in it. */
+  const STANDING = {
+    hung_piece:      'You hand pieces over.',
+    left_behind:     'You leave pieces where they can be taken.',
+    unresolved_hang: 'You play on with a piece still loose.',
+    missed_material: 'You walk past free material.',
+    bad_trade:       'You trade down.',
+    allowed_mate:    'You allow mate in one.',
+    missed_mate:     'You miss mate in one.',
+    panic_move:      'You move faster than you can count.'
+  };
+
+  const TONE_VAR = { critical: 'var(--critical)', warning: 'var(--warning)', good: 'var(--good)' };
+
+  function renderPatterns() {
+    const games = state.games;
+    const agg = { heroMoves: 0, hangs: 0, hangCp: 0, missed: 0, missedCp: 0, punished: 0, offered: 0, fast: 0, fastBlunders: 0, badTrades: 0, allowedMates: 0, missedMates: 0 };
+    for (const g of games) for (const k in agg) agg[k] += (g.stats[k] || 0);
+
+    const hangRate = agg.heroMoves ? (agg.hangs / agg.heroMoves * 100) : 0;
+    const punishRate = agg.offered ? (agg.punished / agg.offered * 100) : null;
+    const recs = Object.values(state.intentions);
+    const freeMoves = recs.filter(r => r.kind === 'free').length;
+    const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+    /* Error taxonomy, counted and weighed in the same pass — the bars below
+       and the verdict above are then reading the same numbers. */
+    const counts = {}, costs = {};
+    for (const g of games) for (const p of g.plies) {
+      if (!p.isHero) continue;
+      for (const t of p.tags) {
+        if (t === 'punished' || t === 'good_capture') continue;
+        counts[t] = (counts[t] || 0) + 1;
+        costs[t] = (costs[t] || 0) + (p.loss || 0);
+      }
+    }
+
+    /* The standing verdict: the cause that costs the most material, or the
+       most frequent one where nothing has a price yet (a loose piece nobody
+       took still cost nothing, and still names the habit). */
+    const priced = Object.keys(counts).some(k => costs[k] > 0);
+    const top = Object.keys(counts)
+      .sort((a, b) => (priced ? costs[b] - costs[a] : 0) || counts[b] - counts[a])[0];
+
+    const lead = $('#pat-lead'), evidence = $('#pat-evidence'), caveat = $('#pat-caveat');
+    if (!agg.heroMoves) {
+      lead.textContent = 'No games analysed yet.';
+      evidence.textContent = 'Import from lichess or paste a PGN, and whatever keeps costing you shows up here.';
+    } else if (!top) {
+      lead.textContent = 'Nothing here cost you material.';
+      evidence.textContent = `${plural(agg.heroMoves, 'move')} of yours checked across ${plural(games.length, 'game')}. No piece hung, nothing free left on the board.`;
+    } else {
+      lead.textContent = STANDING[top] || (TAGS[top] || { label: top }).label + '.';
+      evidence.textContent = `${(TAGS[top] || { label: top }).label}, ${plural(counts[top], 'time')} in ${plural(agg.heroMoves, 'move')} of yours`
+        + (costs[top] ? ` — ${(costs[top] / 100).toFixed(1)} pawns at stake.` : '.');
+    }
+    // Saying what one game cannot tell you is cheaper than letting the
+    // reader mistake a single game for a habit.
+    caveat.hidden = !agg.heroMoves || games.length >= 3;
+    if (!caveat.hidden) {
+      caveat.textContent = `${plural(games.length, 'game')} so far — a reading, not yet a habit. Import a few more before you trust the shape of it.`;
+    }
+
+    // The one figure, against the thresholds its colour has always implied.
+    const tone = hangRate > 8 ? 'critical' : hangRate > 4 ? 'warning' : 'good';
+    $('#pat-figure').className = 'pat-figure ' + (agg.heroMoves ? { critical: 'crit', warning: 'warn', good: 'good' }[tone] : '');
+    $('#pat-hang-v').textContent = agg.heroMoves ? hangRate.toFixed(1) + '%' : '—';
+    const fill = $('#pat-hang-fill');
+    fill.style.width = Math.min(100, hangRate / 20 * 100) + '%';
+    fill.style.background = TONE_VAR[tone];
+    $('#pat-gauge').setAttribute('aria-label', agg.heroMoves
+      ? `Hang rate ${hangRate.toFixed(1)} percent on a scale to 20. Amber over 4, red over 8.`
+      : 'Hang rate not measured yet.');
+
+    // The figures the verdict was built from. A dash is not a grade, and a
+    // zero is not a fault, so neither takes a tone.
+    const ledger = $('#pat-ledger');
+    ledger.textContent = '';
+    const rows = [
+      { k: 'Punish rate', v: punishRate == null ? '—' : Math.round(punishRate) + '%',
+        n: agg.offered ? `you took ${agg.punished} of ${agg.offered} free pieces` : 'nothing was left free for you',
+        cls: punishRate == null ? '' : punishRate < 50 ? 'warn' : 'good' },
+      { k: 'Material dropped', v: (agg.hangCp / 100).toFixed(1), n: 'pawns handed over', cls: agg.hangCp ? 'crit' : 'good' },
+      { k: 'Material left', v: (agg.missedCp / 100).toFixed(1), n: 'pawns you could have taken', cls: agg.missedCp ? 'warn' : 'good' },
+      { k: 'Fast and wrong', v: agg.fast ? Math.round(agg.fastBlunders / agg.fast * 100) + '%' : '—',
+        n: agg.fast ? `${agg.fastBlunders} of your ${agg.fast} moves under 4s lost material` : 'no moves played under 4s',
+        cls: agg.fast ? (agg.fastBlunders ? 'warn' : 'good') : '' },
+      { k: 'Moves tagged', v: String(recs.length), n: freeMoves ? `${plural(freeMoves, 'move')} you had no plan for` : 'tag moves in Review', cls: '' }
+    ];
+    for (const r of rows) {
+      const row = el('div', 'led-row ' + r.cls);
+      const k = el('div', 'led-k', r.k);
+      k.appendChild(el('span', 'led-n', r.n));
+      row.appendChild(k);
+      row.appendChild(el('div', 'led-v', r.v));
+      ledger.appendChild(row);
+    }
+
+    drawBars($('#pat-taxonomy'), Object.keys(counts)
+      .map(k => ({
+        label: (TAGS[k] || { label: k }).label,
+        value: counts[k],
+        sub: costs[k] ? (costs[k] / 100).toFixed(1) : '—',
+        tone: (TAGS[k] || { tone: 'info' }).tone
+      }))
+      .sort((a, b) => b.value - a.value),
+      'No material errors found yet.', ['times', 'pawns']);
+
+    // hang rate per game
+    drawTrend($('#pat-trend'), games);
+
+    // intention diagnoses
+    const vcounts = {};
+    for (const r of recs) {
+      if (!r.verdict) continue;
+      const lab = r.verdict.label;
+      if (!vcounts[lab]) vcounts[lab] = { value: 0, tone: r.verdict.tone };
+      vcounts[lab].value++;
+    }
+    drawBars($('#pat-intent'), Object.entries(vcounts)
+      .map(([k, v]) => ({ label: k, value: v.value, tone: v.tone }))
+      .sort((a, b) => b.value - a.value),
+      'Nothing tagged yet. Open a game in Review and answer "what were you trying to do?" on a few moves.',
+      ['times']);
+  }
+
+  /* A tally reads as a table: headed columns, the count and what it cost
+     both stated, and the bar carrying the comparison rather than the whole
+     message. `sub` is optional — the intention tally has nothing to weigh. */
+  function drawBars(host, rows, emptyMsg, heads) {
+    host.textContent = '';
+    const hasSub = rows.some(r => r.sub != null);
+    host.className = 'bars' + (hasSub ? ' has-sub' : '');
+    if (!rows.length) { host.appendChild(el('div', 'empty', emptyMsg)); return; }
+
+    const head = el('div', 'bar-row bar-head');
+    head.appendChild(el('span'));
+    head.appendChild(el('span'));
+    head.appendChild(el('span', 'label', heads[0]));
+    if (hasSub) head.appendChild(el('span', 'label', heads[1]));
+    host.appendChild(head);
+
+    const max = Math.max(...rows.map(r => r.value));
+    for (const r of rows) {
+      const row = el('div', 'bar-row');
+      row.appendChild(el('span', null, r.label));
+      const track = el('div', 'bar-track');
+      const fill = el('div', 'bar-fill');
+      fill.style.width = (r.value / max * 100) + '%';
+      fill.style.background = TONE_VAR[r.tone] || 'var(--muted)';
+      track.appendChild(fill);
+      row.appendChild(track);
+      row.appendChild(el('span', 'n', String(r.value)));
+      if (hasSub) row.appendChild(el('span', 's', r.sub == null ? '' : String(r.sub)));
+      host.appendChild(row);
+    }
+  }
+
+  function drawTrend(host, games) {
+    host.textContent = '';
+    if (games.length < 2) {
+      host.appendChild(el('div', 'empty', 'Import a few more games and this becomes a trend line.'));
+      return;
+    }
+    const vals = games.map(g => g.stats.hangRate);
+    const max = Math.max(10, Math.ceil(Math.max(...vals) / 5) * 5);
+    const W = 640, H = 170, padL = 34, padB = 26, padT = 10, padR = 10;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    const n = games.length;
+    const bw = Math.min(46, iw / n * 0.62);
+
+    const wrap = el('div', 'scroll-x');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.setAttribute('width', '100%');
+    svg.style.minWidth = Math.max(320, n * 54) + 'px';
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label',
+      `Hang rate for each of ${n} games, newest last, from ${Math.min(...vals).toFixed(0)} to ${Math.max(...vals).toFixed(0)} percent. `
+      + 'Marked lines at 4 and 8 percent: over 4 counts as amber, over 8 as red.');
+
+    const mk = (tag, attrs) => {
+      const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    };
+    // Gridlines on whole percents. Stepping by max/4 put them on 3.75 and
+    // 7.5 and then rounded the labels to "4%" and "8%", so the line sat
+    // half a percent from where it claimed to be — which only became
+    // obvious once the real 4 and 8 thresholds were drawn beside it.
+    for (let t = 0; t <= max; t += 5) {
+      const y = padT + ih - (t / max) * ih;
+      svg.appendChild(mk('line', { x1: padL, x2: W - padR, y1: y, y2: y, stroke: 'var(--line-soft)', 'stroke-width': 1 }));
+      const lab = mk('text', { x: padL - 7, y: y + 3.5, 'text-anchor': 'end', fill: 'var(--muted)', 'font-size': 10, 'font-family': 'var(--f-mono)' });
+      lab.textContent = Math.round(t) + '%';
+      svg.appendChild(lab);
+    }
+    // A bar turns amber over 4 and red over 8, which until now was a rule you
+    // could only infer from the hue. Drawing the lines that decide it means a
+    // reader who cannot separate the two hues can still see which bars cross.
+    for (const [at, tone] of [[4, 'warning'], [8, 'critical']]) {
+      if (at > max) continue;
+      const y = padT + ih - (at / max) * ih;
+      // Full strength: the dash and the hairline weight already keep it
+      // subordinate to the bars, and fading it put the line under 2:1 —
+      // too faint for something the reader needs in order to use the chart.
+      svg.appendChild(mk('line', {
+        x1: padL, x2: W - padR, y1: y, y2: y,
+        stroke: `var(--${tone})`, 'stroke-width': 1, 'stroke-dasharray': '3 3'
+      }));
+    }
+    games.forEach((g, i) => {
+      const cx = padL + (iw / n) * (i + 0.5);
+      const v = g.stats.hangRate;
+      const h = (v / max) * ih;
+      const y = padT + ih - h;
+      svg.appendChild(mk('rect', {
+        x: cx - bw / 2, y, width: bw, height: Math.max(2, h), rx: 3,
+        fill: v > 8 ? 'var(--critical)' : v > 4 ? 'var(--warning)' : 'var(--good)'
+      }));
+      const vl = mk('text', { x: cx, y: y - 5, 'text-anchor': 'middle', fill: 'var(--ink-soft)', 'font-size': 10, 'font-family': 'var(--f-mono)' });
+      vl.textContent = v.toFixed(0);
+      svg.appendChild(vl);
+      const xl = mk('text', { x: cx, y: H - 8, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 10, 'font-family': 'var(--f-mono)' });
+      xl.textContent = g.source === 'sample' ? 'demo' : String(i + 1);
+      svg.appendChild(xl);
+    });
+    svg.appendChild(mk('line', { x1: padL, x2: W - padR, y1: padT + ih, y2: padT + ih, stroke: 'var(--line)', 'stroke-width': 1 }));
+    wrap.appendChild(svg);
+    host.appendChild(wrap);
+  }
+
+  /* ---------- background grading ----------
+     The search takes roughly 150ms a move, so it runs after the first
+     paint, one move at a time, yielding to the browser between each so
+     scrolling and clicking never stall. Grades appear as they arrive. */
+  /* ---------- the search, off the main thread ----------
+     One ply of search is ~90ms and the worst is ~480ms, so running it here
+     stalled every keystroke no matter how often the loop yielded. The worker
+     is built from the #bd-core script's own text, which keeps dist/index.html
+     a single self-contained file with no second copy of the engine. */
+  let searchWorker, nextJob = 0;
+  const pending = new Map();
+
+  function worker() {
+    if (searchWorker !== undefined) return searchWorker;
+    try {
+      const core = document.getElementById('bd-core').textContent;
+      const glue = `
+        onmessage = function (e) {
+          var m = e.data;
+          if (m.kind === 'line') {
+            var l = bestLine(new Position(m.fen), m.depth, m.plies);
+            postMessage({ id: m.id, line: l.line, mateIn: l.mateIn });
+            return;
+          }
+          var res = searchBest(new Position(m.fenBefore), m.depth);
+          var played = res.scores[m.san];
+          var swing = (played != null && res.score != null) ? Math.max(0, res.score - played) : null;
+          var refutation = null;
+          if (swing != null && swing >= m.refuteAt) {
+            refutation = searchBest(new Position(m.fenAfter), Math.max(2, m.depth - 1)).san || null;
+          }
+          postMessage({ id: m.id, best: res.san, score: res.score, played: played, refutation: refutation });
+        };`;
+      const url = URL.createObjectURL(new Blob([core, glue], { type: 'text/javascript' }));
+      searchWorker = new Worker(url);
+      URL.revokeObjectURL(url);
+      searchWorker.onmessage = e => {
+        const done = pending.get(e.data.id);
+        if (done) { pending.delete(e.data.id); done(e.data); }
+      };
+      // A worker that dies mid-game must not hang the queue forever.
+      searchWorker.onerror = () => { searchWorker = null; for (const d of pending.values()) d(null); pending.clear(); };
+    } catch (e) {
+      searchWorker = null;   // blocked by CSP, or no Worker: grade inline instead
+    }
+    return searchWorker;
+  }
+
+  /* The line behind the best move. Walking it is three more searches, which
+     is far too much for the main thread, so it goes to the same worker the
+     grading uses — and only for the move actually on screen, never for all
+     forty. Without a worker it runs shallower inline rather than not at all. */
+  function askLine(fen, depth, plies) {
+    const w = worker();
+    if (!w) {
+      try { return Promise.resolve(TAC.bestLine(new Position(fen), Math.min(2, depth), plies)); }
+      catch (e) { return Promise.resolve({ line: [], mateIn: null }); }
+    }
+    return new Promise(resolve => {
+      const id = ++nextJob;
+      pending.set(id, r => resolve(r && r.line ? r : { line: [], mateIn: null }));
+      w.postMessage({ id, kind: 'line', fen, depth, plies });
+    });
+  }
+
+  // "9…Bg7 10.Qxf6 Nxe4" — numbered the way a scoresheet numbers it.
+  function formatLine(sans, moveNumber, color) {
+    let n = moveNumber, c = color;
+    const out = [];
+    sans.forEach((san, i) => {
+      if (c === 'w') out.push(n + '.' + san);
+      else out.push((i === 0 ? n + '…' : '') + san);
+      if (c === 'b') n++;
+      c = c === 'w' ? 'b' : 'w';
+    });
+    return out.join(' ');
+  }
+
+  function gradeOne(ply, depth) {
+    const w = worker();
+    if (!w) { gradePly(ply, depth); return Promise.resolve(); }
+    return new Promise(resolve => {
+      const id = ++nextJob;
+      pending.set(id, r => {
+        if (r) applyGrade(ply, r.best, r.score, r.played, r.refutation);
+        else gradePly(ply, depth);
+        resolve();
+      });
+      w.postMessage({ id, fenBefore: ply.fenBefore, fenAfter: ply.fenAfter, san: ply.san, depth, refuteAt: REFUTE_AT });
+    });
+  }
+
+  async function gradeInBackground(game, depth) {
+    if (game.graded || game.grading) return;
+    game.grading = true;
+    state.grading = true;
+    const total = game.plies.length;
+    for (let i = 0; i < total; i++) {
+      // Awaiting the worker is the yield; the main thread is free meanwhile.
+      await gradeOne(game.plies[i], depth || 3);
+      if (state.currentId === game.id) {
+        refreshDot(game.plies[i], i);
+        if (i === state.ply) renderVerdict(game, game.plies[i]);
+      }
+      if (i % 4 === 0 || i === total - 1) setProgress(game, i + 1, total);
+    }
+    game.stats = aggregate(game.plies, game.heroColor);
+    game.graded = true;
+    game.grading = false;
+    state.grading = false;
+    setProgress(game, total, total);
+    if (state.currentId === game.id) renderReview(false);
+    renderGames(); renderPatterns();
+  }
+
+  function setProgress(game, done, total) {
+    const bar = $('#grade-progress');
+    if (!bar) return;
+    if (done >= total) { bar.textContent = ''; bar.hidden = true; return; }
+    bar.hidden = false;
+    bar.textContent = `reading the position · ${done}/${total}`;
+  }
+
+  /* ---------- import ---------- */
+  function addParsed(list, source, heroHint, statusEl) {
+    let added = 0, failed = 0;
+    for (const parsed of list) {
+      if (!parsed.moves || parsed.moves.length < 2) continue;
+      const g = buildGame(parsed, source, heroHint);
+      if (g.error) { failed++; continue; }
+      g.pgnText = parsed.raw || parsed.pgnText || '';
+      if (source !== 'sample') state.games = state.games.filter(x => x.source !== 'sample');
+      state.games.unshift(g);
+      persistGame(g);
+      added++;
+    }
+    if (added && !state.games.some(x => x.id === state.currentId)) {
+      state.currentId = state.games[0].id;
+      state.ply = -1;
+    }
+    if (statusEl) {
+      statusEl.className = 'status ' + (added ? 'ok' : 'err');
+      statusEl.textContent = added
+        ? `${added} game${added === 1 ? '' : 's'} analysed${failed ? `, ${failed} skipped` : ''}.`
+        : 'No readable games found in that text.';
+    }
+    if (added) {
+      renderGames(); renderPatterns();
+      if (!state.currentId) state.currentId = state.games[0].id;
+      // Grade only the game actually on screen. Each game costs ~4.4s of
+      // main-thread search, so grading six up front spent ~26s blocking the
+      // UI for five games nobody had opened yet — and opening a game from
+      // the list grades it anyway. The list's hang rate comes from the
+      // static pass, which has already run.
+      const open = current();
+      if (open) gradeInBackground(open);
+    }
+    return added;
+  }
+
+  // An in-flight request must not be re-firable by a second click. The
+  // disabled style existed already; nothing ever set the attribute.
+  function busy(sel, on) { const b = $(sel); if (b) b.disabled = on; }
+
+  async function fetchLichess() {
+    const name = $('#li-user').value.trim();
+    const st = $('#li-status');
+    if (!name) { st.className = 'status err'; st.textContent = 'Enter a username first.'; return; }
+    st.className = 'status'; st.textContent = 'Asking lichess…';
+    const url = `https://lichess.org/api/games/user/${encodeURIComponent(name)}?max=15&clocks=true&moves=true&tags=true`;
+    busy('#li-go', true);
+    try {
+      const res = await fetch(url, { headers: { Accept: 'application/x-chess-pgn' } });
+      if (res.status === 404) { st.className = 'status err'; st.textContent = `No lichess account called "${name}".`; return; }
+      if (!res.ok) { st.className = 'status err'; st.textContent = `Lichess replied ${res.status}. Try again in a moment.`; return; }
+      const text = await res.text();
+      if (!text.trim()) { st.className = 'status err'; st.textContent = 'That account has no public games.'; return; }
+      const parsed = parsePgn(text);
+      addParsed(parsed, 'lichess', { name }, st);
+    } catch (e) {
+      st.className = 'status err';
+      st.textContent = 'Could not reach lichess from here. Paste the PGN instead.';
+    } finally {
+      busy('#li-go', false);
+    }
+  }
+
+  async function fetchChessCom() {
+    const proxy = $('#cc-proxy').value.trim().replace(/\/+$/, '');
+    const name = $('#cc-user').value.trim();
+    const st = $('#cc-status');
+    if (!proxy) { st.className = 'status err'; st.textContent = 'Start the proxy with `npm run proxy`, then put its address here.'; return; }
+    if (!name) { st.className = 'status err'; st.textContent = 'Enter a chess.com username first.'; return; }
+    try { localStorage.setItem('bd-proxy', proxy); } catch (e) { /* optional */ }
+    st.className = 'status'; st.textContent = 'Asking the proxy…';
+    busy('#cc-go', true);
+    try {
+      const res = await fetch(`${proxy}/chesscom/${encodeURIComponent(name)}?max=15`);
+      const text = await res.text();
+      if (!res.ok) {
+        st.className = 'status err';
+        st.textContent = text.slice(0, 160) || `Proxy replied ${res.status}.`;
+        return;
+      }
+      if (!text.trim()) { st.className = 'status err'; st.textContent = 'No games came back for that account.'; return; }
+      addParsed(parsePgn(text), 'chess.com', { name }, st);
+    } catch (e) {
+      st.className = 'status err';
+      st.textContent = `Could not reach the proxy at ${proxy}. Is it running?`;
+    } finally {
+      busy('#cc-go', false);
+    }
+  }
+
+  /* ---------- storage ---------- */
+  async function connectStore() {
+    try {
+      const db = await window.claude?.use?.('db');
+      if (!db) { $('#store-note').textContent = 'Running without storage — games and tags last until you close the page.'; return; }
+      state.db = db;
+      $('#store-note').textContent = 'Games and move tags are saved to this page, so they are here next time.';
+      await loadStored();
+    } catch (e) {
+      $('#store-note').textContent = 'Running without storage — games and tags last until you close the page.';
+    }
+  }
+
+  async function loadStored() {
+    if (!state.db) return;
+    try {
+      const snap = await state.db.collection('games').orderBy('at', 'desc').limit(60).get();
+      const docs = snap?.docs ?? snap ?? [];
+      for (const d of docs) {
+        const data = typeof d.data === 'function' ? d.data() : d;
+        if (!data || !data.pgn) continue;
+        if (state.games.some(g => g.id === data.gid)) continue;
+        const parsed = parsePgn(data.pgn)[0];
+        if (!parsed) continue;
+        const g = buildGame(parsed, data.source || 'stored', { color: data.heroColor });
+        if (g.error) continue;
+        g.id = data.gid;
+        state.games = state.games.filter(x => x.source !== 'sample');
+        state.games.push(g);
+      }
+    } catch (e) { /* storage is optional */ }
+    try {
+      const snap = await state.db.collection('intentions').limit(500).get();
+      const docs = snap?.docs ?? snap ?? [];
+      for (const d of docs) {
+        const data = typeof d.data === 'function' ? d.data() : d;
+        if (data && data.key) state.intentions[data.key] = data;
+      }
+    } catch (e) { /* storage is optional */ }
+    renderGames(); renderPatterns(); renderReview(false);
+  }
+
+  async function persistGame(g) {
+    if (!state.db || g.source === 'sample' || !g.pgnText) return;
+    try {
+      await state.db.collection('games').doc(g.id).set({
+        gid: g.id, pgn: g.pgnText, source: g.source, heroColor: g.heroColor, at: Date.now()
+      });
+    } catch (e) { /* storage is optional */ }
+  }
+
+  async function saveIntention(key, rec) {
+    if (!state.db) return;
+    try {
+      if (rec) await state.db.collection('intentions').doc(key.replace(/[^\w-]/g, '_')).set({ key, ...rec });
+      else await state.db.collection('intentions').doc(key.replace(/[^\w-]/g, '_')).delete();
+    } catch (e) { /* storage is optional */ }
+  }
+
+  /* ---------- tabs & nav ---------- */
+  function setTab(name) {
+    state.tab = name;
+    for (const t of ['games', 'review', 'patterns']) {
+      $('#tab-' + t).setAttribute('aria-selected', String(t === name));
+      $('#v-' + t).hidden = t !== name;
+    }
+    replay($('#v-' + name), 'view-in');
+    if (name === 'patterns') renderPatterns();
+    if (name === 'games') renderGames();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function step(delta) {
+    const g = current();
+    if (!g) return;
+    const next = Math.max(-1, Math.min(g.plies.length - 1, state.ply + delta));
+    if (next === state.ply) return;
+    const animate = Math.abs(delta) === 1 && next > state.ply;
+    // Going back un-plays the move you are leaving, so that is the one that
+    // sounds — quieter, because you are taking it back rather than making it.
+    const undone = delta === -1 ? plyAt(g, state.ply) : null;
+    state.ply = next;
+    state.picking = null;
+    renderReview(animate);
+    if (undone) playMove(undone, { back: true });
+  }
+
+  /* ---------- boot ---------- */
+  /* ---------- sound ----------
+     Synthesised, never sampled: dist/index.html is one self-contained file,
+     so there are no audio assets to ship. That constraint turns out to be the
+     better design anyway — generating every voice lets the sound read the
+     same data the analysis does, so what you hear and what the desk says a
+     move cost cannot drift apart.
+
+     The decision layer (soundPlan and the tables above it) is pure and lives
+     under test; everything below it only turns cues into nodes. */
+  let actx = null, master = null;
+  let muted = (() => { try { return localStorage.getItem('bd-muted') === '1'; } catch (e) { return false; } })();
+  let level = (() => {
+    try { const v = parseFloat(localStorage.getItem('bd-volume')); return v >= 0 && v <= 1 ? v : 0.7; }
+    catch (e) { return 0.7; }
+  })();
+
+  // Perceived loudness is not linear in gain, so the slider is squared before
+  // it reaches the graph — otherwise the whole range crowds into the top third.
+  function levelGain() { return Math.pow(level, 2) * 2.4; }
+
+  function audio() {
+    if (actx !== null) return actx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    try { actx = AC ? new AC() : false; } catch (e) { actx = false; }
+    if (actx) {
+      // One gain for the whole desk, and a limiter behind it: holding the
+      // arrow key down stacks voices, and without this they sum into clipping.
+      const lim = actx.createDynamicsCompressor();
+      lim.threshold.value = -3; lim.knee.value = 4; lim.ratio.value = 6;
+      lim.attack.value = 0.002; lim.release.value = 0.12;
+      master = actx.createGain();
+      master.gain.value = levelGain();
+      master.connect(lim);
+      lim.connect(actx.destination);
+    }
+    return actx;
+  }
+
+  function setLevel(v) {
+    level = Math.max(0, Math.min(1, v));
+    try { localStorage.setItem('bd-volume', String(level)); } catch (e) { /* optional */ }
+    if (master) master.gain.setTargetAtTime(levelGain(), actx.currentTime, 0.02);
+  }
+
+  /* ---------- what a move sounds like (pure, and tested) ---------- */
+
+  // Each piece sounds like the way it moves, not only like what it weighs.
+  // The knight's tone bends upward because it is the one piece that turns a
+  // corner; the rook is a square wave because it only ever travels straight;
+  // the bishop glides on a sine; the king is low and slow.
+  const PIECE_VOICE = {
+    p: { freq: 430, wave: 'triangle', dur: .055, bend: .90, gain: .155, cut: 3200 },
+    n: { freq: 296, wave: 'triangle', dur: .105, bend: 1.16, gain: .16, cut: 2600 },
+    b: { freq: 352, wave: 'sine',     dur: .110, bend: .82, gain: .15, cut: 2900 },
+    r: { freq: 238, wave: 'square',   dur: .100, bend: .93, gain: .15, cut: 1700 },
+    q: { freq: 198, wave: 'sawtooth', dur: .130, bend: .86, gain: .16, cut: 1500 },
+    k: { freq: 152, wave: 'sine',     dur: .160, bend: .95, gain: .17, cut: 1200 }
+  };
+  const CASTLE_RE = /^O-O(-O)?[+#]?$/;
+  const LOOSE_TAGS = ['hung_piece', 'left_behind', 'unresolved_hang'];
+  const VERDICT_WEIGHT = { blunder: 1, mistake: .58, inaccuracy: .3 };
+
+  // Heavier pieces land lower, darker and longer. VALUE is the engine's own
+  // material table, so the weight you hear is the weight the analysis used.
+  // The old mapping spanned 3.5 dB from pawn to queen, which no one could
+  // hear; this spans about 13.
+  function captureVoice(type) {
+    const v = VALUE[type] || VALUE.p;
+    const k = Math.min(1, Math.max(0, (v - 100) / 800));   // pawn 0 → queen 1
+    return { freq: 190 - k * 128, dur: .13 + k * .42, cut: 2100 - k * 1450, gain: .15 + k * .52 };
+  }
+
+  // Where on the board it happened. Held well short of hard-panned, so a move
+  // on the a-file sits left of centre rather than outside your head.
+  function panForSquare(sq) {
+    if (typeof sq !== 'string' || sq.length < 2) return 0;
+    const f = sq.toLowerCase().charCodeAt(0) - 97;
+    if (!(f >= 0 && f <= 7)) return 0;
+    return +(((f - 3.5) / 3.5) * .62).toFixed(3);
+  }
+
+  // The whole sound design, as data. Returns the cues a ply should play with
+  // every parameter resolved, so the mapping can be checked without a device.
+  function soundPlan(ply, opts) {
+    const back = !!(opts && opts.back);
+    const trim = back ? .45 : 1;              // stepping back replays it, quieter
+    const them = ply.isHero === false;
+    const san = ply.san || '';
+    const cues = [];
+
+    const base = PIECE_VOICE[ply.piece] || PIECE_VOICE.p;
+    const body = {
+      type: 'body', wave: base.wave, freq: base.freq, bend: base.bend, dur: base.dur,
+      cut: base.cut * (them ? .62 : 1),
+      gain: base.gain * (them ? .80 : 1) * trim,
+      delay: 0
+    };
+    cues.push(body);
+
+    // Castling moves two pieces, so it knocks twice — the king, then the rook
+    // settling in behind it.
+    if (CASTLE_RE.test(san)) {
+      cues.push({
+        type: 'body', wave: PIECE_VOICE.r.wave, freq: PIECE_VOICE.r.freq,
+        bend: PIECE_VOICE.r.bend, dur: PIECE_VOICE.r.dur, cut: body.cut,
+        gain: body.gain * .8, delay: .085
+      });
+    }
+
+    if (ply.captured) {
+      const v = captureVoice(ply.captured);
+      cues.push({ type: 'capture', freq: v.freq, dur: v.dur,
+                  cut: v.cut * (them ? .7 : 1), gain: v.gain * (them ? .8 : 1) * trim, delay: .012 });
+    }
+
+    if (san.indexOf('=') !== -1) cues.push({ type: 'promote', gain: .17 * trim, delay: .06 });
+
+    const m = ply.motifs || {};
+    // Mate replaces the check ring rather than stacking on it: the position is
+    // settled, and the ring exists to sound unresolved.
+    if (ply.mateDelivered) cues.push({ type: 'mate', gain: .3 * trim, delay: .07 });
+    else if (m.check) cues.push({ type: 'check', gain: .17 * trim, delay: .05 });
+
+    for (const pair of [['fork', 'fork'], ['pins', 'pin'], ['skewers', 'skewer'], ['discovered', 'discovered']]) {
+      const v = m[pair[0]];
+      if (Array.isArray(v) ? v.length : v) cues.push({ type: 'motif', kind: pair[1], gain: .12 * trim, delay: .13 });
+    }
+
+    // The two cues that exist because this is a review desk and not a board.
+    // Both are about your own play: the opponent blundering is not the thing
+    // being reviewed, and their hanging piece is not your habit.
+    if (ply.isHero) {
+      const w = VERDICT_WEIGHT[ply.grade] || VERDICT_WEIGHT[ply.severity];
+      if (w) cues.push({ type: 'verdict', weight: w, gain: (.1 + w * .18) * trim, delay: .1 });
+      if ((ply.tags || []).some(t => LOOSE_TAGS.indexOf(t) !== -1)) {
+        cues.push({ type: 'loose', gain: .1 * trim, delay: .19 });
+      }
+    }
+
+    return { pan: panForSquare(ply.to), cues };
+  }
+
+  /* ---------- turning cues into nodes ---------- */
+
+  // A struck-wood transient: filtered noise with a steep decay.
+  function noise(ctx, dest, dur, cutoff, gain, t) {
+    const n = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = cutoff;
+    const g = ctx.createGain(); g.gain.value = gain;
+    src.connect(lp); lp.connect(g); g.connect(dest);
+    src.start(t);
+  }
+
+  function tone(ctx, dest, o) {
+    const t = o.at;
+    const osc = ctx.createOscillator();
+    osc.type = o.wave || 'triangle';
+    osc.frequency.setValueAtTime(o.freq, t);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(28, o.freq * (o.bend == null ? .72 : o.bend)), t + o.dur);
+    if (o.detune) osc.detune.value = o.detune;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, o.gain), t + (o.attack || .006));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
+    let tail = g;
+    if (o.cut) { const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = o.cut; g.connect(lp); tail = lp; }
+    osc.connect(g); tail.connect(dest);
+    osc.start(t); osc.stop(t + o.dur + .03);
+  }
+
+  const MOTIF_FREQ = { fork: 880, pin: 660, skewer: 990, discovered: 770 };
+
+  function playCue(ctx, dest, c, t0) {
+    const at = t0 + (c.delay || 0);
+    switch (c.type) {
+      case 'body':
+        tone(ctx, dest, { at, freq: c.freq, dur: c.dur, gain: c.gain, wave: c.wave, bend: c.bend, cut: c.cut });
+        noise(ctx, dest, Math.min(.028, c.dur * .5), c.cut * 1.3, c.gain * .75, at);
+        break;
+      case 'capture':
+        // The strike first, then the weight of the piece leaving the board.
+        noise(ctx, dest, .075, c.cut, c.gain * .85, at);
+        tone(ctx, dest, { at: at + .008, freq: c.freq, dur: c.dur, gain: c.gain, wave: 'triangle', bend: .68, cut: c.cut });
+        break;
+      case 'promote':
+        // A pawn becoming something else: the one figure here that rises.
+        [0, .055, .11].forEach((d, i) => tone(ctx, dest,
+          { at: at + d, freq: 392 * Math.pow(1.26, i), dur: .16, gain: c.gain * (1 - i * .18), wave: 'triangle', bend: 1.02 }));
+        break;
+      case 'check':
+        // A bare fifth, unresolved on purpose — it wants an answer.
+        tone(ctx, dest, { at, freq: 740, dur: .3, gain: c.gain, wave: 'sine', bend: .99 });
+        tone(ctx, dest, { at: at + .03, freq: 1110, dur: .26, gain: c.gain * .62, wave: 'sine', bend: .99 });
+        break;
+      case 'mate':
+        // Conclusive, not pretty: a falling pair that closes the game.
+        tone(ctx, dest, { at, freq: 330, dur: .5, gain: c.gain, wave: 'triangle', bend: .5 });
+        tone(ctx, dest, { at: at + .09, freq: 165, dur: .8, gain: c.gain * .85, wave: 'sine', bend: .5 });
+        break;
+      case 'motif':
+        tone(ctx, dest, { at, freq: MOTIF_FREQ[c.kind] || 880, dur: .1, gain: c.gain, wave: 'sine', bend: 1.0 });
+        tone(ctx, dest, { at: at + .07, freq: (MOTIF_FREQ[c.kind] || 880) * 1.5, dur: .09, gain: c.gain * .7, wave: 'sine', bend: 1.0 });
+        break;
+      case 'verdict':
+        // Your own error, and it is meant to sit wrong: two voices a beat
+        // apart in tuning, falling together. The weight is the grade.
+        tone(ctx, dest, { at, freq: 150, dur: .22 + c.weight * .3, gain: c.gain, wave: 'sawtooth', bend: .55, cut: 900 });
+        tone(ctx, dest, { at, freq: 150, dur: .2 + c.weight * .3, gain: c.gain * .8, wave: 'sawtooth', bend: .55, detune: -34 - c.weight * 26, cut: 900 });
+        break;
+      case 'loose':
+        // Something left on the board. It fades without ever settling.
+        tone(ctx, dest, { at, freq: 523, dur: .62, gain: c.gain, wave: 'sine', bend: .985, attack: .09 });
+        break;
+    }
+  }
+
+  function playMove(ply, opts) {
+    if (muted || !ply) return;
+    const ctx = audio();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const plan = soundPlan(ply, opts || {});
+    let dest = master;
+    if (plan.pan && ctx.createStereoPanner) {
+      const p = ctx.createStereoPanner();
+      p.pan.value = plan.pan;
+      p.connect(master);
+      dest = p;
+    }
+    // Schedule a hair ahead: a cue started exactly at currentTime can be
+    // missed when the context has only just been resumed.
+    const t0 = ctx.currentTime + .012;
+    for (const c of plan.cues) playCue(ctx, dest, c, t0);
+  }
+
+  function applyMuted() {
+    const b = $('#t-sound');
+    if (!b) return;
+    b.textContent = '';
+    b.appendChild(icon(muted ? 'ic-muted' : 'ic-sound'));
+    b.setAttribute('aria-label', muted ? 'Sound settings, currently muted' : 'Sound settings');
+    const m = $('#t-mute');
+    if (m) {
+      m.textContent = muted ? 'Unmute' : 'Mute';
+      m.setAttribute('aria-pressed', String(muted));
+    }
+  }
+
+  function osTheme() {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  function readStoredTheme() {
+    try { const t = localStorage.getItem('bd-theme'); return t === 'light' || t === 'dark' ? t : null; }
+    catch (e) { return null; }
+  }
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    const b = $('#t-theme');
+    if (!b) return;
+    b.textContent = '';
+    // The button offers the other theme, so it shows where you are going.
+    b.appendChild(icon(theme === 'dark' ? 'ic-sun' : 'ic-moon'));
+    b.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  }
+
+  function boot() {
+    buildBoard();
+
+    const sample = parsePgn(SAMPLE_PGN)[0];
+    const g = buildGame(sample, 'sample', { color: 'w' });
+    if (!g.error) {
+      g.pgnText = SAMPLE_PGN;
+      state.games.push(g);
+      state.currentId = g.id;
+      state.ply = 19;   // open on a tagged moment rather than an empty board
+    }
+
+    $('#tab-games').addEventListener('click', () => setTab('games'));
+    $('#tab-review').addEventListener('click', () => setTab('review'));
+    $('#tab-patterns').addEventListener('click', () => setTab('patterns'));
+
+    $('#nav-start').addEventListener('click', () => { state.ply = -1; state.picking = null; renderReview(false); });
+    $('#nav-prev').addEventListener('click', () => step(-1));
+    $('#nav-next').addEventListener('click', () => step(1));
+    $('#nav-end').addEventListener('click', () => { const c = current(); state.ply = c.plies.length - 1; state.picking = null; renderReview(false); });
+    // The stylesheet has carried light and dark overrides all along, but
+    // nothing ever wrote data-theme, so light was reachable only by changing
+    // the OS. Seed from the OS, then let the choice stick.
+    applyTheme(readStoredTheme() || osTheme());
+    applyMuted();
+    /* The sound control: the button opens the panel, the panel holds mute and
+       level. Changing the level plays a move at the new setting, because a
+       volume control you cannot hear is just a number. */
+    const pop = $('#sound-pop'), soundBtn = $('#t-sound'), range = $('#t-level');
+    const SAMPLE = { san: 'Nf3', piece: 'n', from: 'g1', to: 'f3', captured: null,
+                     isHero: true, motifs: {}, tags: [] };
+    function openPop(open) {
+      pop.hidden = !open;
+      soundBtn.setAttribute('aria-expanded', String(open));
+      if (open) range.focus();
+    }
+    function showLevel() { $('#t-level-v').textContent = Math.round(level * 100) + '%'; }
+    range.value = String(Math.round(level * 100));
+    showLevel();
+
+    soundBtn.addEventListener('click', e => { e.stopPropagation(); openPop(pop.hidden); });
+    $('#t-mute').addEventListener('click', () => {
+      muted = !muted;
+      try { localStorage.setItem('bd-muted', muted ? '1' : '0'); } catch (e) { /* optional */ }
+      applyMuted();
+      if (!muted) playMove(SAMPLE);                 // confirm it is back
+    });
+    range.addEventListener('input', () => { setLevel(range.value / 100); showLevel(); });
+    // On release, not on every pixel of the drag — one sample, at the new level.
+    range.addEventListener('change', () => { if (!muted) playMove(SAMPLE); });
+    document.addEventListener('click', e => {
+      if (!pop.hidden && !pop.contains(e.target) && e.target !== soundBtn) openPop(false);
+    });
+    pop.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.stopPropagation(); openPop(false); soundBtn.focus(); }
+    });
+    replay($('.mark'), 'mark-in');
+    $('#t-theme').addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem('bd-theme', next); } catch (e) { /* optional */ }
+    });
+
+    $('#t-flip').addEventListener('click', () => { state.flipped = !state.flipped; buildBoard(); renderReview(false); });
+    $('#t-danger').addEventListener('click', e => {
+      state.danger = !state.danger;
+      e.currentTarget.setAttribute('aria-pressed', String(state.danger));
+      renderReview(false);
+    });
+
+    document.addEventListener('keydown', e => {
+      if (state.tab !== 'review') return;
+      if (/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+      else if (e.key === 'Home') { e.preventDefault(); state.ply = -1; renderReview(false); }
+      else if (e.key === 'End') { e.preventDefault(); const c = current(); state.ply = c.plies.length - 1; renderReview(false); }
+      else if (e.key === 'f') { state.flipped = !state.flipped; buildBoard(); renderReview(false); }
+    });
+
+    $('#li-go').addEventListener('click', fetchLichess);
+    $('#li-user').addEventListener('keydown', e => { if (e.key === 'Enter') fetchLichess(); });
+    $('#cc-go').addEventListener('click', fetchChessCom);
+    $('#cc-user').addEventListener('keydown', e => { if (e.key === 'Enter') fetchChessCom(); });
+    try {
+      const saved = localStorage.getItem('bd-proxy');
+      if (saved) $('#cc-proxy').value = saved;
+    } catch (e) { /* storage is optional */ }
+
+    // Which side you played, for the next paste. '' means work it out from
+    // the PGN's own names against whatever account you have already used.
+    let pasteSide = '';
+    const sidePick = document.querySelector('.side-pick');
+    sidePick.addEventListener('click', e => {
+      const b = e.target.closest('[role="radio"]');
+      if (!b) return;
+      pasteSide = b.dataset.side;
+      for (const r of sidePick.querySelectorAll('[role="radio"]')) {
+        r.setAttribute('aria-checked', String(r === b));
+      }
+    });
+
+    $('#pgn-go').addEventListener('click', () => {
+      const text = $('#pgn-text').value;
+      const st = $('#pgn-status');
+      if (!text.trim()) { st.className = 'status err'; st.textContent = 'Paste a PGN first.'; return; }
+      const parsed = parsePgn(text);
+      // On "work it out", the only name the desk has is whichever account you
+      // have typed in above; a PGN by itself cannot say which player is you.
+      const hint = pasteSide
+        ? { color: pasteSide }
+        : { name: ($('#li-user').value || $('#cc-user').value || '').trim() };
+      const added = addParsed(parsed.map(p => (p.pgnText = text, p)), 'pasted', hint, st);
+      if (added) {
+        $('#pgn-text').value = '';
+        const guessed = state.games.filter(x => x.source === 'pasted' && x.heroGuessed).length;
+        if (guessed) {
+          st.textContent += ' Assumed you had white — open a game and click "you had white" if not.';
+        }
+      }
+    });
+    $('#pgn-file').addEventListener('change', e => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = () => { $('#pgn-text').value = String(r.result).slice(0, 400000); $('#pgn-go').click(); };
+      r.readAsText(f);
+    });
+    ['dragover', 'drop'].forEach(ev => document.addEventListener(ev, e => {
+      e.preventDefault();
+      if (ev === 'drop' && e.dataTransfer?.files?.[0]) {
+        const r = new FileReader();
+        r.onload = () => { $('#pgn-text').value = String(r.result).slice(0, 400000); setTab('games'); $('#pgn-go').click(); };
+        r.readAsText(e.dataTransfer.files[0]);
+      }
+    }));
+
+    window.addEventListener('resize', () => renderReview(false));
+
+    renderReview(false);
+    renderGames();
+    renderPatterns();
+    connectStore();
+    // first paint is done; now let the search fill in grades
+    if (state.games[0]) gradeInBackground(state.games[0]);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>

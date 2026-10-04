@@ -1,0 +1,6 @@
+{
+  "files": ["dist/index.html"],
+  "insertAfter": "</script>",
+  "commentSyntax": "html",
+  "cspChecked": true
+}

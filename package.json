@@ -1,0 +1,20 @@
+{
+  "name": "blunder-desk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chess review desk: classifies why a move lost material and grades the reasoning behind it.",
+  "type": "commonjs",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "node build.js",
+    "start": "node build.js && node server/static.js",
+    "proxy": "node server/proxy.js",
+    "test": "node build.js && node test/engine.test.js && node test/tactics.test.js && node test/analysis.test.js && node test/worker.test.js && node test/board.test.js && node test/sound.test.js && node test/game.test.js && node test/bestline.test.js",
+    "test:engine": "node test/engine.test.js",
+    "test:analysis": "node test/analysis.test.js",
+    "test:tactics": "node test/tactics.test.js",
+    "test:worker": "node build.js && node test/worker.test.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
