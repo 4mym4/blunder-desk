@@ -153,6 +153,7 @@ button { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--line-soft);
 }
 .topbar-in { max-width: 1180px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.topbar-actions { display: flex; gap: 6px; align-items: center; }
 /* ---------- the masthead ----------
    The wordmark used to be Spectral 600 at 29px: the same face, weight and
    colour as every section heading on the page, so the product's name carried
@@ -512,6 +513,14 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
   .brand .tag { display: none; }
   #v-review .sect-head { margin-block: 10px 8px; gap: 7px; }
   #v-review .sect-head h2 { font-size: var(--t-heading); }
+  /* On narrow screens: brand + actions on top row, tabs full-width below.
+     Avoids the theme button stranding alone on a third row. */
+  .topbar-in { gap: 8px; }
+  .tabs { order: 3; width: 100%; }
+  .tabs button { flex: 1; }
+  .topbar-actions { margin-left: auto; }
+  /* Smaller board leaves more room for the answer/analysis area below. */
+  .board-wrap { height: min(40dvh, calc(100vw - 32px)); }
 }
 
 /* ---------- verdict ---------- */
@@ -952,18 +961,20 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
       <button role="tab" id="tab-review"  aria-selected="true"  aria-controls="v-review">Review</button>
       <button role="tab" id="tab-patterns"aria-selected="false" aria-controls="v-patterns">Patterns</button>
     </div>
-    <div class="sound-ctl">
-      <button class="nav-btn theme-btn" id="t-sound" aria-haspopup="true" aria-expanded="false" aria-controls="sound-pop" title="Move sounds"></button>
-      <div class="sound-pop card" id="sound-pop" role="group" aria-label="Sound" hidden>
-        <button class="btn btn-sm" id="t-mute"></button>
-        <div class="sound-row">
-          <label class="label" for="t-level">Level</label>
-          <input type="range" id="t-level" min="0" max="100" step="5">
-          <span class="sound-val" id="t-level-v"></span>
+    <div class="topbar-actions">
+      <div class="sound-ctl">
+        <button class="nav-btn theme-btn" id="t-sound" aria-haspopup="true" aria-expanded="false" aria-controls="sound-pop" title="Move sounds"></button>
+        <div class="sound-pop card" id="sound-pop" role="group" aria-label="Sound" hidden>
+          <button class="btn btn-sm" id="t-mute"></button>
+          <div class="sound-row">
+            <label class="label" for="t-level">Level</label>
+            <input type="range" id="t-level" min="0" max="100" step="5">
+            <span class="sound-val" id="t-level-v"></span>
+          </div>
         </div>
       </div>
+      <button class="nav-btn theme-btn" id="t-theme" title="Switch between light and dark"></button>
     </div>
-    <button class="nav-btn theme-btn" id="t-theme" title="Switch between light and dark"></button>
   </div>
 </div>
 
