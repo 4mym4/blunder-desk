@@ -433,6 +433,11 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
 .mv .gm.good       { color: var(--good); }
 .ic { width: 15px; height: 15px; fill: currentColor; display: block; flex: none; }
 .theme-btn { width: 34px; height: 30px; color: var(--muted); }
+/* Both belong to the phone layout: the desk has room for a ruled two-column
+   sheet that never needs folding away, so the number rides its own column
+   there and there is nothing to fold. */
+.mv-no { display: none; }
+.sheet-toggle { display: none; }
 
 /* ---------- sound control ----------
    The button opens the level; muting lives inside it, so the topbar keeps one
@@ -479,48 +484,87 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
   .tabs button { min-height: 44px; padding-inline: 15px; }
 }
 
-/* ---------- narrow: sheet beside the board, analysis below both ----------
-   Stacking the sheet under the board cost a band of height the analysis
-   needed, so every move meant scrolling to read the verdict. Beside the
-   board it costs width instead, which a portrait phone has to spare and
-   the board can give up: the sheet rules vertically in the gutter the
-   square leaves, and the answer sits on screen under both. */
+/* ---------- narrow: a folding sheet beside the board ----------
+   Three arrangements were tried under the board — a scrolling strip, a ruled
+   band, a capped column — and each spent height the answer prompt needed, so
+   reading the verdict meant scrolling on every move. The sheet is a column
+   beside the board now, it folds away when it is not being read, and the
+   verdict no longer holds a box open at all: it floats over the board for a
+   few seconds and stands down. What is left on screen is the board and the
+   question, which is the only pair the review loop actually needs. */
 @media (max-width: 900px) {
+  /* --sheet-w is the one number the grid and the board's own size both read,
+     so folding the sheet away resizes the board by itself. */
   .review-grid {
-    grid-template-areas: "board sheet" "bar bar" "analysis analysis";
-    grid-template-columns: minmax(0, 1fr) 140px;
-    grid-template-rows: auto auto minmax(0, 1fr);
-    gap: 10px;
+    --sheet-w: 106px;
+    grid-template-areas: "board tog sheet" "answer tog sheet" "bar bar bar";
+    grid-template-columns: minmax(0, 1fr) 24px var(--sheet-w);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 10px 0;
   }
+  .review-grid.sheet-shut { --sheet-w: 0px; }
+  .review-grid.sheet-shut .col-sheet { display: none; }
+
   /* The board column's two children become grid items in their own right, so
      the move bar can run the full width instead of wrapping onto a second
      row inside a column barely wider than the four nav buttons. */
   .col-board { display: contents; }
   .board-wrap { grid-area: board; }
   .board-bar  { grid-area: bar; }
-  /* Sized from the width its column has left once the sheet is paid for, so
-     the square fills that column exactly rather than leaving a band of empty
-     container above and below it. 182px = 32px .wrap padding + 10px gap +
-     140px sheet. The dvh cap only bites on a short, wide window. */
-  .board-wrap { flex: none; height: min(38dvh, calc(100vw - 182px)); }
+  .col-analysis { grid-area: answer; }
+  /* Sized from the width its column has left once the sheet and its handle
+     are paid for, so the square fills that column exactly rather than leaving
+     a band of empty container above and below it. 56px = 32px .wrap padding
+     + 24px handle. The dvh cap only bites on a short, wide window. */
+  .board-wrap { flex: none; height: min(38dvh, calc(100vw - 56px - var(--sheet-w))); }
   .col-sheet { flex: none; overflow: hidden; display: flex; flex-direction: column; }
   .col-head { display: none; }
-  /* A narrower sheet than the desk's: the number column loses the padding it
-     only needs when there is room, and notation drops to the meta size so a
-     move and its grade mark still clear the cell. */
+
+  /* The handle folds the sheet. It keeps its own column in both states, so it
+     never moves out from under the thumb that just pressed it. */
+  .sheet-toggle {
+    grid-area: tog; display: grid; place-items: center; cursor: pointer;
+    margin: 0 5px; padding: 0; color: var(--muted);
+    background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: 7px;
+  }
+  .sheet-toggle .ic { width: 11px; height: 11px; transition: transform .2s; }
+  .review-grid.sheet-shut .sheet-toggle .ic { transform: rotate(180deg); }
+
+  /* Single file: one ply a row carrying its own number, so the sheet asks for
+     a hundred pixels rather than the two hundred a shared number column and
+     two move cells need. The pair cells leave the grid entirely — display:none
+     drops a grid item rather than leaving a blank track where it stood. */
   .sheet {
-    display: grid; grid-template-columns: 18px minmax(0, 1fr) minmax(0, 1fr);
+    display: grid; grid-template-columns: minmax(0, 1fr);
     overflow-x: hidden; overflow-y: auto; padding: 0; font-size: var(--t-meta);
   }
-  .sheet-num { border-bottom: 1px solid var(--line-soft); padding: 6px 4px 6px 0; }
-  .sheet-gap { display: block; }
-  /* ponytail: a 7-character SAN (Qa1xd4+) clips at this width; widen the
-     column if the long-disambiguation case ever shows up in practice. */
+  .sheet-num, .sheet-gap { display: none; }
+  .mv-no { display: inline; color: var(--muted); font-variant-numeric: tabular-nums; }
   .mv {
     width: 100%; border-bottom: 1px solid var(--line-soft); border-radius: 0;
-    padding: 6px 5px; gap: 4px; overflow: hidden;
+    padding: 6px 7px; gap: 5px;
   }
   .mv .tagged { margin-left: auto; }
+
+  /* The verdict floats over the board and stands down after a few seconds,
+     because the column it used to live in is the room the answer prompt
+     needs. Positioned against the review pane, whose box starts below the
+     topbar, so it lands over the board rather than over the tabs. */
+  #v-review { position: relative; }
+  #verdict-slot {
+    position: absolute; inset: 0 0 auto 0; z-index: 30;
+    opacity: 0; visibility: hidden; transform: translateY(-6px);
+    transition: opacity .22s, transform .22s, visibility .22s;
+  }
+  #verdict-slot.flash { opacity: 1; visibility: visible; transform: none; }
+  #verdict-slot .verdict {
+    background: color-mix(in srgb, var(--surface) 84%, transparent);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--line); box-shadow: var(--shadow);
+    max-height: 48dvh; overflow-y: auto;
+  }
+  /* Aggregate stats are not what you are reading while stepping a game. */
+  .stats-card { display: none; }
   /* The coaching copy is the first thing to go when the screen is short —
      the question and the options still read on their own. */
   .intent .intent-sub, .verdict .note + .note { display: none; }
@@ -535,6 +579,13 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
   .tabs { order: 3; width: 100%; }
   .tabs button { flex: 1; }
   .topbar-actions { margin-left: auto; }
+}
+/* Both carry an ID or sit inside the query above, so the stand-down has to be
+   stated after it to win. The verdict still appears and still goes away — it
+   just stops sliding while it does. */
+@media (prefers-reduced-motion: reduce) {
+  #verdict-slot { transition: none; transform: none; }
+  .sheet-toggle .ic { transition: none; }
 }
 
 /* ---------- verdict ---------- */
@@ -1019,7 +1070,11 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
         </div>
       </div>
 
-      <aside class="col col-sheet card">
+      <button class="sheet-toggle" id="sheet-toggle" aria-expanded="true" aria-controls="sheet-col" aria-label="Hide the move list">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><use href="#ic-next"/></svg>
+      </button>
+
+      <aside class="col col-sheet card" id="sheet-col">
         <div class="col-head">
           <span class="label">Scoresheet</span>
           <span class="label" id="sheet-count"></span>
@@ -1555,13 +1610,39 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
       else paint(fen, opts);
     }
 
+    // renderVerdict consumes state.revealKey, so the question of whether this
+    // render is the one releasing a held-back verdict has to be asked first.
+    const revealed = !!p && state.revealKey === g.id + '__' + p.ply;
+
     renderSheet(g);
     renderVerdict(g, p);
     renderIntent(g, p);
     renderGameStats(g);
+    flashVerdict(revealed);
   }
 
   let sheetScrolledTo = null, titleShownFor = null;
+
+  /* The floating verdict, which is the phone layout only: there the window
+     stands in for the column the desk gives the analysis, so it has to go
+     away by itself or it sits on the board forever. Desktop never flashes —
+     the verdict is already on screen and never left.
+
+     It shows once per ply. Re-rendering for any other reason (grading filling
+     in behind the reader, the danger ring toggling) must not restart the
+     clock, or the window would never stand down while a game was grading. */
+  let flashedPly = null, flashTimer = null;
+  const narrow = window.matchMedia('(max-width: 900px)');
+
+  function flashVerdict(force) {
+    if (!narrow.matches) return;
+    if (!force && flashedPly === state.ply) return;
+    flashedPly = state.ply;
+    const slot = $('#verdict-slot');
+    slot.classList.add('flash');
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(() => slot.classList.remove('flash'), 5000);
+  }
 
   // Restart a CSS animation on an element that may already carry the class.
   function replay(node, cls) {
@@ -1636,6 +1717,9 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
         b.dataset.ply = j;
         b.setAttribute('aria-current', String(j === state.ply));
         b.appendChild(gradeMark(pl));
+        // Carried on every ply but shown only by the phone's single-file
+        // sheet, which drops the shared number column the desk rules with.
+        b.appendChild(el('span', 'mv-no', pl.moveNumber + (pl.color === 'w' ? '.' : '…')));
         b.appendChild(el('span', null, pl.san));
         labelMove(b, pl);
         if (state.intentions[g.id + '__' + j]) {
@@ -1643,7 +1727,10 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
           t.setAttribute('aria-label', 'tagged');
           b.appendChild(t);
         }
-        b.addEventListener('click', () => { const step = j === state.ply + 1; state.ply = j; state.picking = null; renderReview(step); });
+        // Picking a move off the sheet is a request to read its verdict, so it
+        // clears the flash's memory and the window comes back even for the ply
+        // already under the cursor.
+        b.addEventListener('click', () => { const step = j === state.ply + 1; state.ply = j; state.picking = null; flashedPly = null; renderReview(step); });
         host.appendChild(b);
       }
     }
@@ -2777,6 +2864,17 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     $('#nav-prev').addEventListener('click', () => step(-1));
     $('#nav-next').addEventListener('click', () => step(1));
     $('#nav-end').addEventListener('click', () => { const c = current(); state.ply = c.plies.length - 1; state.picking = null; renderReview(false); });
+
+    /* Folding the sheet away. The grid reads --sheet-w for both the sheet's
+       own column and the board's size, so the class is the whole mechanism. */
+    const sheetTog = $('#sheet-toggle');
+    sheetTog.addEventListener('click', () => {
+      const shut = $('.review-grid').classList.toggle('sheet-shut');
+      sheetTog.setAttribute('aria-expanded', String(!shut));
+      sheetTog.setAttribute('aria-label', shut ? 'Show the move list' : 'Hide the move list');
+    });
+    // The floating verdict is in the way the moment it has been read.
+    $('#verdict-slot').addEventListener('click', () => $('#verdict-slot').classList.remove('flash'));
     // The stylesheet has carried light and dark overrides all along, but
     // nothing ever wrote data-theme, so light was reachable only by changing
     // the OS. Seed from the OS, then let the choice stick.
