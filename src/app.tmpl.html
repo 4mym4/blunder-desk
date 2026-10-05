@@ -506,7 +506,7 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
                          "answer answer answer answer"
                          "bar bar bar bar";
     grid-template-columns: 24px minmax(0, 1fr) 24px var(--sheet-w);
-    grid-template-rows: minmax(100px, 1fr) auto auto;
+    grid-template-rows: minmax(0, 1fr) auto auto;
     gap: 10px 0;
   }
   .review-grid.sheet-shut { --sheet-w: 0px; }
@@ -518,13 +518,17 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
   .col-board { display: contents; }
   .board-wrap { grid-area: board; }
   .board-bar  { grid-area: bar; }
-  /* The prompt runs the full width in both states and takes the height its
-     content asks for — it is the one thing on the page that must never be
-     cut off, so the board absorbs what is left rather than the other way
-     round. The square sizes itself from its own box, so nothing here has to
-     do that arithmetic. */
+  /* The prompt runs the full width and takes the height its content asks for.
+     Tucking it into the board's own column instead was tried and does not
+     work: at ~200px the seven options stack one to a row and the box runs a
+     thousand pixels tall, straight over the move bar. Full width it is three
+     rows of options and ~210px in both states, which always fits. */
   .col-analysis { grid-area: answer; overflow: visible; }
-  .board-wrap { flex: none; }
+  /* A square board in a column narrower than its row is tall can only ever be
+     as big as that column, so the leftover height is worth nothing to it.
+     Squaring the wrap off its own width means the box IS the board rather
+     than a tall empty container the board floats inside. */
+  .board-wrap { flex: none; aspect-ratio: 1; align-self: center; }
   .col-sheet { flex: none; overflow: hidden; display: flex; flex-direction: column; }
   .col-head { display: none; }
 
