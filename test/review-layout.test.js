@@ -202,6 +202,28 @@ ok('the verdict tab is in the page and points at the window', () => {
   assert.ok(/aria-controls="verdict-slot"/.test(btn), 'it should name the window it reopens');
 });
 
+/* Grading rebuilds the card from two call sites of its own as results land.
+   Fitting the card from renderReview left those two redrawing it and wiping
+   the control, so the ellipsis vanished a second after it appeared. Every
+   redraw has to go through the one function that re-fits it. */
+ok('every redraw of the verdict re-fits it, not just the one in renderReview', () => {
+  const wrapper = (html.match(/function renderVerdict\(g, p\) \{[\s\S]*?\n  \}/) || [])[0];
+  assert.ok(wrapper, 'renderVerdict not found');
+  assert.ok(/fitVerdict\(\)/.test(wrapper),
+            'renderVerdict itself must re-fit the card, or grading strips the expander');
+  // One choke point: the draw and the fit stay welded, so no caller can get
+  // one without the other.
+  assert.strictEqual((html.match(/fitVerdict\(\);/g) || []).length, 1,
+                     'fitVerdict should be called from exactly one place');
+});
+
+ok('the window opens collapsed and only offers to expand when there is more', () => {
+  assert.ok(/#verdict-slot\.lite \.verdict\s*\{[^}]*max-height/.test(narrowCss),
+            'the collapsed window needs a height cap so the board stays visible');
+  assert.ok(/scrollHeight <= card\.clientHeight/.test(html),
+            'a card that already fits should drop the mask and the expander');
+});
+
 // Both tabs keep a 24px hit area while painting a narrower tag, so shrinking
 // the look must not shrink the target.
 ok('both margin tabs keep a full-width hit area behind the narrow tag', () => {

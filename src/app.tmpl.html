@@ -546,7 +546,10 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
   .verdict-tab  { grid-area: vtog; }
   .sheet-toggle .ic, .verdict-tab .ic { width: 10px; height: 10px; transition: transform .2s; }
   .review-grid.sheet-shut .sheet-toggle .ic { transform: rotate(180deg); }
-  .verdict-tab[aria-expanded="true"] { color: var(--brass); }
+  /* Brass at rest, not just when open: a muted glyph this small on a dark
+     board reads as a speck of chrome, and the one control that brings the
+     analysis back has to look like something you can press. */
+  .verdict-tab { color: var(--brass); background: var(--brass-soft); }
 
   /* Single file: one ply a row carrying its own number, so the sheet asks for
      a hundred pixels rather than the two hundred a shared number column and
@@ -585,6 +588,26 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     border: 1px solid var(--line); box-shadow: var(--shadow);
     max-height: 48dvh; overflow-y: auto;
   }
+  /* It arrives as a headline and nothing else, so the board stays readable
+     behind it. The fade says there is more without spending a line saying so,
+     and the ellipsis opens the rest. Height cap rather than hiding particular
+     children, because the three shapes this card takes — starting position,
+     held back, full verdict — do not share a structure to hide. */
+  #verdict-slot.lite .verdict {
+    max-height: 21dvh; overflow: hidden;
+    -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent);
+            mask-image: linear-gradient(to bottom, #000 68%, transparent);
+  }
+  /* Hung off the card's bottom edge rather than laid over its last line, so
+     it can never sit on top of the sentence it is offering to finish. */
+  .verdict-more {
+    position: absolute; right: 14px; bottom: -14px; z-index: 2;
+    min-width: 46px; height: 30px; padding: 0 12px; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 999px;
+    background: var(--surface-2); color: var(--ink-soft);
+    font-size: var(--t-ui); line-height: 1; letter-spacing: .08em;
+  }
+  #verdict-slot:not(.lite) .verdict-more { display: none; }
 
   /* The prompt is what the row is sized around, so it spends its height
      carefully: more options fit per line and nothing has to scroll. */
@@ -1686,6 +1709,29 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     $('#verdict-tab').setAttribute('aria-expanded', String(on));
   }
 
+  /* The window opens as a headline and an ellipsis, so the board stays visible
+     behind it, and expands to the whole card on request. Run after the card is
+     built — renderVerdict has three exits and this is the one point past all
+     of them — and it re-collapses each time, because a new ply is a new
+     verdict and should arrive small however the last one was left. */
+  function fitVerdict() {
+    const slot = $('#verdict-slot');
+    if (!narrow.matches || !slot.firstChild) return;
+    slot.classList.add('lite');
+    // A card that already fits has nothing behind the fade, so it keeps
+    // neither the mask nor the control that would open an empty remainder.
+    const card = slot.firstElementChild;
+    if (card.scrollHeight <= card.clientHeight) { slot.classList.remove('lite'); return; }
+    const more = el('button', 'verdict-more', '…');
+    more.setAttribute('aria-label', 'Show the whole verdict');
+    more.addEventListener('click', e => {
+      e.stopPropagation();          // the slot's own click dismisses the window
+      clearTimeout(flashTimer);     // opened to be read, so it stays open
+      slot.classList.remove('lite');
+    });
+    slot.appendChild(more);
+  }
+
   function flashVerdict(force) {
     if (!narrow.matches) return;
     if (!force && flashedPly === state.ply) return;
@@ -1812,7 +1858,16 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     }
   }
 
+  /* Every route that redraws the card has to re-fit it, and grading redraws it
+     from two call sites of its own as results land. Hanging the fit off the
+     draw rather than off renderReview is what keeps those two from rebuilding
+     the card and leaving the phone without its control. */
   function renderVerdict(g, p) {
+    drawVerdict(g, p);
+    fitVerdict();
+  }
+
+  function drawVerdict(g, p) {
     const slot = $('#verdict-slot');
     slot.textContent = '';
     if (!p) {
