@@ -437,7 +437,7 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
    sheet that never needs folding away, so the number rides its own column
    there and there is nothing to fold. */
 .mv-no { display: none; }
-.sheet-toggle { display: none; }
+.sheet-toggle, .verdict-tab { display: none; }
 
 /* ---------- sound control ----------
    The button opens the level; muting lives inside it, so the topbar keeps one
@@ -497,9 +497,11 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
      so folding the sheet away resizes the board by itself. */
   .review-grid {
     --sheet-w: 106px;
-    grid-template-areas: "board tog sheet" "answer tog sheet" "bar bar bar";
-    grid-template-columns: minmax(0, 1fr) 24px var(--sheet-w);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "vtog board tog sheet"
+                         "answer answer answer answer"
+                         "bar bar bar bar";
+    grid-template-columns: 24px minmax(0, 1fr) 24px var(--sheet-w);
+    grid-template-rows: minmax(100px, 1fr) auto auto;
     gap: 10px 0;
   }
   .review-grid.sheet-shut { --sheet-w: 0px; }
@@ -511,24 +513,31 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
   .col-board { display: contents; }
   .board-wrap { grid-area: board; }
   .board-bar  { grid-area: bar; }
-  .col-analysis { grid-area: answer; }
-  /* Sized from the width its column has left once the sheet and its handle
-     are paid for, so the square fills that column exactly rather than leaving
-     a band of empty container above and below it. 56px = 32px .wrap padding
-     + 24px handle. The dvh cap only bites on a short, wide window. */
-  .board-wrap { flex: none; height: min(38dvh, calc(100vw - 56px - var(--sheet-w))); }
+  /* The prompt runs the full width in both states and takes the height its
+     content asks for — it is the one thing on the page that must never be
+     cut off, so the board absorbs what is left rather than the other way
+     round. The square sizes itself from its own box, so nothing here has to
+     do that arithmetic. */
+  .col-analysis { grid-area: answer; overflow: visible; }
+  .board-wrap { flex: none; }
   .col-sheet { flex: none; overflow: hidden; display: flex; flex-direction: column; }
   .col-head { display: none; }
 
-  /* The handle folds the sheet. It keeps its own column in both states, so it
-     never moves out from under the thumb that just pressed it. */
-  .sheet-toggle {
-    grid-area: tog; display: grid; place-items: center; cursor: pointer;
-    margin: 0 5px; padding: 0; color: var(--muted);
-    background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: 7px;
+  /* Two tabs on the two margins, each the same small shape: the verdict on the
+     left, the move list on the right. The hit area stays a full 24px wide
+     while the paint stops at the content box, so the tab reads as a 14px
+     tag without shrinking the target under a fingertip. */
+  .sheet-toggle, .verdict-tab {
+    align-self: center; height: 58px; cursor: pointer;
+    padding: 0 5px; border: 0; color: var(--muted);
+    display: grid; place-items: center;
+    background: var(--surface-2); background-clip: content-box; border-radius: 6px;
   }
-  .sheet-toggle .ic { width: 11px; height: 11px; transition: transform .2s; }
+  .sheet-toggle { grid-area: tog; }
+  .verdict-tab  { grid-area: vtog; }
+  .sheet-toggle .ic, .verdict-tab .ic { width: 10px; height: 10px; transition: transform .2s; }
   .review-grid.sheet-shut .sheet-toggle .ic { transform: rotate(180deg); }
+  .verdict-tab[aria-expanded="true"] { color: var(--brass); }
 
   /* Single file: one ply a row carrying its own number, so the sheet asks for
      a hundred pixels rather than the two hundred a shared number column and
@@ -551,10 +560,14 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
      needs. Positioned against the review pane, whose box starts below the
      topbar, so it lands over the board rather than over the tabs. */
   #v-review { position: relative; }
+  /* A dialogue box off the left margin rather than a banner across the top:
+     it comes in from the edge its own tab lives on, so where it came from and
+     what brings it back are the same place. */
   #verdict-slot {
-    position: absolute; inset: 0 0 auto 0; z-index: 30;
-    opacity: 0; visibility: hidden; transform: translateY(-6px);
-    transition: opacity .22s, transform .22s, visibility .22s;
+    position: absolute; top: 0; left: 0; right: auto; z-index: 30;
+    width: min(92%, 430px);
+    opacity: 0; visibility: hidden; transform: translateX(-14px);
+    transition: opacity .2s ease, transform .24s cubic-bezier(.2,.8,.3,1), visibility .24s;
   }
   #verdict-slot.flash { opacity: 1; visibility: visible; transform: none; }
   #verdict-slot .verdict {
@@ -563,6 +576,12 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     border: 1px solid var(--line); box-shadow: var(--shadow);
     max-height: 48dvh; overflow-y: auto;
   }
+
+  /* The prompt is what the row is sized around, so it spends its height
+     carefully: more options fit per line and nothing has to scroll. */
+  .intent { padding: 12px 13px; }
+  .intent h3 { font-size: var(--t-body); }
+  .opt { padding: 7px 10px; }
   /* Aggregate stats are not what you are reading while stepping a game. */
   .stats-card { display: none; }
   /* The coaching copy is the first thing to go when the screen is short —
@@ -579,13 +598,21 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
   .tabs { order: 3; width: 100%; }
   .tabs button { flex: 1; }
   .topbar-actions { margin-left: auto; }
+
+  /* The masthead rolls away after a few seconds and a downward swipe brings it
+     back. Negative margin rather than a transform, because the point is to
+     hand the height to the board — a transform would slide it out of sight
+     and leave the gap behind. --bar-h is measured once, since the bar's own
+     height is what has to be cancelled. */
+  .topbar { transition: margin-top .34s cubic-bezier(.4, 0, .2, 1); }
+  .topbar.rolled { margin-top: calc(-1 * var(--bar-h, 130px)); }
 }
 /* Both carry an ID or sit inside the query above, so the stand-down has to be
    stated after it to win. The verdict still appears and still goes away — it
    just stops sliding while it does. */
 @media (prefers-reduced-motion: reduce) {
   #verdict-slot { transition: none; transform: none; }
-  .sheet-toggle .ic { transition: none; }
+  .sheet-toggle .ic, .verdict-tab .ic, .topbar { transition: none; }
 }
 
 /* ---------- verdict ---------- */
@@ -1069,6 +1096,10 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
           </div>
         </div>
       </div>
+
+      <button class="verdict-tab" id="verdict-tab" aria-expanded="false" aria-controls="verdict-slot" aria-label="Show the verdict">
+        <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><use href="#ic-tag"/></svg>
+      </button>
 
       <button class="sheet-toggle" id="sheet-toggle" aria-expanded="true" aria-controls="sheet-col" aria-label="Hide the move list">
         <svg class="ic" viewBox="0 0 16 16" aria-hidden="true"><use href="#ic-next"/></svg>
@@ -1634,14 +1665,36 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
   let flashedPly = null, flashTimer = null;
   const narrow = window.matchMedia('(max-width: 900px)');
 
+  // The tab on the left margin is the window's only permanent trace, so it
+  // states what the window is doing whichever of the two opened it.
+  function showVerdict(on) {
+    $('#verdict-slot').classList.toggle('flash', on);
+    $('#verdict-tab').setAttribute('aria-expanded', String(on));
+  }
+
   function flashVerdict(force) {
     if (!narrow.matches) return;
     if (!force && flashedPly === state.ply) return;
     flashedPly = state.ply;
-    const slot = $('#verdict-slot');
-    slot.classList.add('flash');
+    showVerdict(true);
     clearTimeout(flashTimer);
-    flashTimer = setTimeout(() => slot.classList.remove('flash'), 5000);
+    flashTimer = setTimeout(() => showVerdict(false), 2500);
+  }
+
+  /* The masthead shows itself, then gets out of the way and hands its height
+     to the board. It only rolls away over the review, where the layout is
+     fitted to the viewport and the height is worth having — the other two
+     tabs are ordinary scrolling pages whose navigation should stay put. */
+  let rollTimer = null;
+  function rollUp() {
+    if (narrow.matches && !$('#v-review').hidden) $('.topbar').classList.add('rolled');
+  }
+  function rollDown(rearm) {
+    const topbar = $('.topbar');
+    topbar.style.setProperty('--bar-h', topbar.offsetHeight + 'px');
+    topbar.classList.remove('rolled');
+    clearTimeout(rollTimer);
+    if (rearm) rollTimer = setTimeout(rollUp, 2600);
   }
 
   // Restart a CSS animation on an element that may already carry the class.
@@ -2556,6 +2609,7 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     replay($('#v-' + name), 'view-in');
     if (name === 'patterns') renderPatterns();
     if (name === 'games') renderGames();
+    rollDown(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -2874,7 +2928,31 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
       sheetTog.setAttribute('aria-label', shut ? 'Show the move list' : 'Hide the move list');
     });
     // The floating verdict is in the way the moment it has been read.
-    $('#verdict-slot').addEventListener('click', () => $('#verdict-slot').classList.remove('flash'));
+    $('#verdict-slot').addEventListener('click', () => showVerdict(false));
+    /* Its tab reopens it, and a verdict opened by hand stays open — the timer
+       is for the one that arrived unasked, not the one you went looking for. */
+    $('#verdict-tab').addEventListener('click', () => {
+      clearTimeout(flashTimer);
+      showVerdict(!$('#verdict-slot').classList.contains('flash'));
+    });
+
+    /* A downward swipe — the gesture for pulling something down from the top —
+       brings the masthead back. Focus brings it back too, and without re-arming
+       the timer: a keyboard cannot swipe, so rolling away under the caret would
+       strand the tabs behind a gesture that cannot be made. */
+    $('.topbar').addEventListener('focusin', () => rollDown(false));
+    narrow.addEventListener('change', () => rollDown(narrow.matches));
+
+    // Only a real downward drag counts, and only one per gesture.
+    let swipeFrom = null;
+    addEventListener('touchstart', e => { swipeFrom = e.touches[0].clientY; }, { passive: true });
+    addEventListener('touchmove', e => {
+      if (swipeFrom == null) return;
+      if (e.touches[0].clientY - swipeFrom > 48) { swipeFrom = null; rollDown(true); }
+    }, { passive: true });
+    addEventListener('touchend', () => { swipeFrom = null; }, { passive: true });
+
+    rollDown(true);
     // The stylesheet has carried light and dark overrides all along, but
     // nothing ever wrote data-theme, so light was reachable only by changing
     // the OS. Seed from the OS, then let the choice stick.

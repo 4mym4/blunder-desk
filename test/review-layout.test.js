@@ -44,13 +44,16 @@ assert.ok(flashSrc, 'flashVerdict not found in the built page');
 function harness(matches) {
   const slot = {
     on: false,
-    classList: { add(c) { if (c === 'flash') slot.on = true; },
-                 remove(c) { if (c === 'flash') slot.on = false; } }
+    classList: { toggle(c, v) { if (c === 'flash') slot.on = v; return v; },
+                 add(c) { if (c === 'flash') slot.on = true; },
+                 remove(c) { if (c === 'flash') slot.on = false; },
+                 contains: c => c === 'flash' && slot.on }
   };
+  const tab = { expanded: null, setAttribute(a, v) { if (a === 'aria-expanded') tab.expanded = v; } };
   let pending = null, nextId = 1, cleared = [];
   const sandbox = {
     state: { ply: 0 },
-    $: () => slot,
+    $: s => (s === '#verdict-tab' ? tab : slot),
     window: { matchMedia: () => ({ matches }) },
     setTimeout: (fn, ms) => { pending = { fn, ms, id: nextId }; return nextId++; },
     clearTimeout: id => { if (id != null) cleared.push(id); }
@@ -58,7 +61,7 @@ function harness(matches) {
   vm.createContext(sandbox);
   vm.runInContext(flashSrc + '\nthis.flashVerdict = flashVerdict;', sandbox);
   return {
-    slot, sandbox, cleared,
+    slot, tab, sandbox, cleared,
     flash: force => sandbox.flashVerdict(force),
     fire: () => { if (pending) pending.fn(); },
     delay: () => pending && pending.ms,
@@ -81,12 +84,20 @@ ok('stepping onto a ply raises the window', () => {
   assert.strictEqual(h.slot.on, true);
 });
 
-ok('it stands down after five seconds', () => {
+ok('it stands down inside two and a half seconds', () => {
   const h = harness(true);
   h.flash(false);
-  assert.strictEqual(h.delay(), 5000, 'the window should hold for five seconds');
+  assert.ok(h.delay() <= 2500, `the window should hold for no more than 2.5s, got ${h.delay()}`);
   h.fire();
   assert.strictEqual(h.slot.on, false);
+});
+
+ok('the left tab tracks the window whichever way it opened', () => {
+  const h = harness(true);
+  h.flash(false);
+  assert.strictEqual(h.tab.expanded, 'true', 'the tab should read as open while the window is up');
+  h.fire();
+  assert.strictEqual(h.tab.expanded, 'false', 'and as closed once it has stood down');
 });
 
 ok('re-rendering the same ply does not re-raise it or restart the clock', () => {
@@ -135,16 +146,36 @@ ok('every area the template names is claimed by an element', () => {
   }
 });
 
-ok('the board and the sheet column size from the same --sheet-w', () => {
+ok('the sheet column is driven by --sheet-w, which folding zeroes', () => {
   assert.ok(/grid-template-columns:[^;]*var\(--sheet-w\)/.test(narrowCss),
             'the sheet column should read --sheet-w');
-  assert.ok(/\.board-wrap\s*\{[^}]*var\(--sheet-w\)/.test(narrowCss),
-            'the board should size from --sheet-w, or folding the sheet will not resize it');
+  assert.ok(/\.sheet-shut\s*\{\s*--sheet-w:\s*0/.test(narrowCss),
+            '.sheet-shut should zero --sheet-w, or folding will not resize the board');
 });
 
-ok('folding the sheet shuts --sheet-w to zero', () => {
-  assert.ok(/\.sheet-shut\s*\{\s*--sheet-w:\s*0/.test(narrowCss),
-            '.sheet-shut should zero --sheet-w');
+// The prompt is the one box that must never be cut off. It is kept whole by
+// giving its row no flex at all — the board takes the slack — so a 1fr here
+// would be the bug coming back.
+ok('the prompt row is sized by its content and the board takes the slack', () => {
+  const rows = narrowCss.match(/grid-template-rows:([^;]+);/)[1].trim();
+  const tracks = rows.match(/minmax\([^)]*\)|\S+/g);
+  const areaRows = narrowCss.match(/grid-template-areas:([^;]+);/)[1]
+    .match(/"[^"]*"/g).map(s => s.replace(/"/g, '').trim().split(/\s+/));
+  assert.strictEqual(tracks.length, areaRows.length, 'a track per laid-out row');
+
+  const answerRow = areaRows.findIndex(r => r.includes('answer'));
+  assert.ok(answerRow >= 0, 'the prompt should have a row of its own');
+  assert.strictEqual(tracks[answerRow], 'auto',
+                     'the prompt row must be content-sized or the box gets clipped');
+
+  const boardRow = areaRows.findIndex(r => r.includes('board'));
+  assert.ok(/1fr/.test(tracks[boardRow]),
+            'the board row should be the flexible one that absorbs what is left');
+});
+
+ok('the prompt column does not clip or scroll', () => {
+  assert.ok(/\.col-analysis\s*\{[^}]*overflow:\s*visible/.test(narrowCss),
+            '.col-analysis should stop scrolling on a phone — the row grows instead');
 });
 
 ok('the single-file sheet drops the pair cells and shows the per-ply number', () => {
@@ -163,6 +194,30 @@ ok('the fold handle is in the page and points at the sheet', () => {
   assert.ok(btn, 'the sheet-toggle button is missing');
   assert.ok(/aria-controls="sheet-col"/.test(btn), 'it should name the element it folds');
   assert.ok(/id="sheet-col"/.test(html), 'and that element should exist');
+});
+
+ok('the verdict tab is in the page and points at the window', () => {
+  const btn = (html.match(/<button class="verdict-tab"[^>]*>/) || [])[0];
+  assert.ok(btn, 'the verdict-tab button is missing');
+  assert.ok(/aria-controls="verdict-slot"/.test(btn), 'it should name the window it reopens');
+});
+
+// Both tabs keep a 24px hit area while painting a narrower tag, so shrinking
+// the look must not shrink the target.
+ok('both margin tabs keep a full-width hit area behind the narrow tag', () => {
+  assert.ok(/\.sheet-toggle,\s*\.verdict-tab\s*\{[^}]*background-clip:\s*content-box/.test(narrowCss),
+            'the tag look should come from background-clip, not from a narrower button');
+  const cols = narrowCss.match(/grid-template-columns:([^;]+);/)[1];
+  assert.ok(/24px/.test(cols), 'the tab columns should stay 24px wide');
+});
+
+ok('the masthead rolls away by the height it actually measures', () => {
+  assert.ok(/\.topbar\.rolled\s*\{[^}]*var\(--bar-h/.test(narrowCss),
+            '.rolled should cancel --bar-h');
+  assert.ok(/--bar-h',\s*topbar\.offsetHeight/.test(html),
+            '--bar-h should be measured from the bar, not guessed');
+  assert.ok(/focusin/.test(html),
+            'focus must bring the masthead back — a keyboard cannot swipe');
 });
 
 ok('every ply button carries its move number', () => {
