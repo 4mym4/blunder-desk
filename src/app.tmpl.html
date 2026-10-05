@@ -121,6 +121,11 @@
 }
 
 * { box-sizing: border-box; }
+/* A downward swipe is this page's own gesture for calling the masthead back,
+   and on a phone browser that same drag is pull-to-refresh — which reloaded
+   the page mid-review. `contain` keeps the overscroll from reaching the
+   browser without touching any scrolling inside the page. */
+html { overscroll-behavior-y: contain; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font-family: var(--f-body); font-size: var(--t-body); line-height: 1.55;
@@ -604,7 +609,12 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
      hand the height to the board — a transform would slide it out of sight
      and leave the gap behind. --bar-h is measured once, since the bar's own
      height is what has to be cancelled. */
-  .topbar { transition: margin-top .34s cubic-bezier(.4, 0, .2, 1); }
+  /* Static, not sticky. Sticky clamps the bar to the top of the viewport, so
+     the negative margin could never move the bar — it pulled the page up
+     underneath it instead, and what rolled away was the game heading and the
+     top of the move list. Static lets the bar leave with its own margin and
+     hand the height down. */
+  .topbar { position: static; transition: margin-top .34s cubic-bezier(.4, 0, .2, 1); }
   .topbar.rolled { margin-top: calc(-1 * var(--bar-h, 130px)); }
 }
 /* Both carry an ID or sit inside the query above, so the stand-down has to be
@@ -2943,9 +2953,14 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     $('.topbar').addEventListener('focusin', () => rollDown(false));
     narrow.addEventListener('change', () => rollDown(narrow.matches));
 
-    // Only a real downward drag counts, and only one per gesture.
+    /* Only a real downward drag counts, and only one per gesture. A drag that
+       starts inside a move list already scrolled down is that list's own, so
+       reading back through the game does not keep popping the masthead out. */
     let swipeFrom = null;
-    addEventListener('touchstart', e => { swipeFrom = e.touches[0].clientY; }, { passive: true });
+    addEventListener('touchstart', e => {
+      const list = e.target.closest && e.target.closest('.sheet');
+      swipeFrom = (list && list.scrollTop > 0) ? null : e.touches[0].clientY;
+    }, { passive: true });
     addEventListener('touchmove', e => {
       if (swipeFrom == null) return;
       if (e.touches[0].clientY - swipeFrom > 48) { swipeFrom = null; rollDown(true); }

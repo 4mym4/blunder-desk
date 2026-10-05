@@ -220,6 +220,19 @@ ok('the masthead rolls away by the height it actually measures', () => {
             'focus must bring the masthead back — a keyboard cannot swipe');
 });
 
+/* Sticky clamps the bar to the top of the viewport, so the negative margin
+   moved the page up underneath it instead and rolled the game heading away.
+   The bar has to be out of the sticky flow for its own margin to shift it. */
+ok('the masthead is not sticky where it rolls, or it rolls the page instead', () => {
+  assert.ok(/\.topbar\s*\{[^}]*position:\s*static/.test(narrowCss),
+            '.topbar must be static on a phone for margin-top to move the bar itself');
+});
+
+ok('a downward swipe cannot reach the browser as pull-to-refresh', () => {
+  assert.ok(/html\s*\{[^}]*overscroll-behavior-y:\s*contain/.test(html),
+            'the root needs overscroll-behavior-y: contain, or the reveal gesture reloads the page');
+});
+
 ok('every ply button carries its move number', () => {
   assert.ok(/el\('span', 'mv-no'/.test(html),
             'renderSheet should append the mv-no span the single-file sheet reads');
