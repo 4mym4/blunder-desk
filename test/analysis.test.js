@@ -192,3 +192,30 @@ for (const [pgn, hero, kind, wording] of evasions) {
 
 if (failures) { console.log(`\n${failures} commentary/verdict check(s) failed`); process.exit(1); }
 console.log('\nall attack-verdict and check-evasion checks passed');
+
+/* A defended piece must say what is defending it.
+
+   Reported from a real game: 1.d4 Nc6 2.Nf3 e5 3.dxe5 d5 4.exd6 cxd6 5.Bf4,
+   and the pawn on d6 read as "defended well enough" with no evidence. The
+   player counted the queen on d8, worked out Bxd6 Qxd6 Qxd6, and concluded
+   the desk was wrong. The desk was right and the sentence was useless: the
+   bishop on f8 also covers d6 through the e7 square their own e-pawn left on
+   move 2, and recapturing with it costs White a bishop for a pawn.
+
+   So the verdict names its defenders now, because the usual way to misread
+   this one is to find a single defender and stop looking. */
+{
+  const fenBefore = 'r1bqkbnr/pp3ppp/2np4/8/5B2/5N2/PPP1PPPP/RN1QKB1R b KQkq - 1 5';
+  const p = new Position(fenBefore);
+  p.moveSan('d5');
+  const ply = { color: 'b', fenBefore, fenAfter: p.fen(), from: 'd6', to: 'd5',
+                captured: null, looseAfter: [], tags: [] };
+  const v = verifyIntention(ply, { kind: 'protect', target: 'd6' });
+
+  assert.strictEqual(v.verdict, 'over_protection', 'd6 was adequately defended');
+  assert.ok(/d8/.test(v.detail) && /f8/.test(v.detail),
+            'both defenders must be named, not just asserted: ' + v.detail);
+  assert.ok(!/lost them material/.test(v.detail),
+            'see() clamps at zero, so an equal trade must not be called a loss');
+  console.log('  ok   a defended piece names the pieces defending it');
+}

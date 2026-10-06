@@ -416,7 +416,14 @@ function verifyIntention(ply, intention) {
       out.verdict = 'over_protection';
       out.label = 'Already safe';
       out.tone = 'warning';
-      out.detail = `${cap(PIECE_NAME[before.board[sq].type])} on ${target} was attacked, but it was defended well enough — taking it would have lost them material.`;
+      // Naming the defenders is the whole point of this verdict. "Defended
+      // well enough" on its own loses the argument to anyone who counted one
+      // defender and stopped: the usual miss is a second one on a line that
+      // opened earlier, and the recapture order it implies — take with the
+      // cheapest defender, not the first one that comes to mind.
+      const guards = before.attackersTo(sq, me)
+        .map(s => `${PIECE_NAME[before.board[s].type]} on ${algebraic(s)}`);
+      out.detail = `${cap(PIECE_NAME[before.board[sq].type])} on ${target} was attacked, but ${guards.length ? `${guards.join(' and ')} covered it` : 'taking it still cost them'} — so the capture would not have won them anything.`;
       return out;
     }
     // it genuinely was hanging. Did the move fix it?
