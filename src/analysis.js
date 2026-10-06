@@ -378,6 +378,28 @@ function recomment(ply) { ply.comment = COM.commentFor(ply); ply.grade = COM.gra
    The player says what they were trying to do; we check the
    claim against the position and name the reasoning error.
    ------------------------------------------------------------ */
+/* Was `sq` about to come under attack, rather than under attack already?
+
+   "Nothing was attacking it" is true of the square and false of the game: a
+   player who moves a rook's only escape square into existence the move before
+   the fork arrives has read the position correctly, and telling them they
+   imagined the danger is the one verdict that punishes seeing further than the
+   checker does.
+
+   Their best reply is what the threat is measured against, because that is the
+   move they would actually have played — the same search that grades the game.
+   ponytail: only that single reply is considered, so a threat they would not
+   have chosen still reads as a phantom. Widen to all their moves if that bites. */
+function foreseenThreat(pos, sq, them) {
+  const probe = pos.withSideToMove(them);
+  const best = TAC.searchBest(probe, 3);
+  if (!best || !best.san) return null;
+  const next = new Position(probe.fen());
+  if (!next.moveSan(best.san)) return null;
+  if (!next.attackersTo(sq, them).length) return null;
+  return { san: best.san, wins: next.see(sq, them) > 0 };
+}
+
 function verifyIntention(ply, intention) {
   const before = new Position(ply.fenBefore);
   const after = new Position(ply.fenAfter);
@@ -414,10 +436,19 @@ function verifyIntention(ply, intention) {
     const wasLosing = before.see(sq, them) > 0;
 
     if (!wasAttacked) {
+      // Not attacked yet is not the same as not in danger.
+      const seen = foreseenThreat(before, sq, them);
+      if (seen) {
+        out.verdict = 'foreseen_threat';
+        out.label = 'Saw it coming';
+        out.tone = 'good';
+        out.detail = `Nothing was attacking ${target} yet, but ${seen.san} was their best move and it ${seen.wins ? 'wins' : 'hits'} ${target}. You answered the threat before it arrived.`;
+        return out;
+      }
       out.verdict = 'phantom_threat';
       out.label = 'Phantom threat';
       out.tone = 'critical';
-      out.detail = `Nothing was attacking ${target}. You spent a move defending a piece that was never in danger.`;
+      out.detail = `Nothing was attacking ${target}, and nothing was about to. You spent a move defending a piece that was never in danger.`;
       return out;
     }
     if (!wasLosing) {

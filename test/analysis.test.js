@@ -269,3 +269,52 @@ console.log('\nall attack-verdict and check-evasion checks passed');
     'abandoning the piece it was defending is still tunnel vision: ' + v2.detail);
   console.log('  ok   a weakness the move does create is still caught');
 }
+
+/* A threat one move out is still a threat.
+
+   Reported from a real game: 8.Nc3, tagged "protect a1". Nothing attacked the
+   rook on a1 at that moment, so the desk called it a phantom threat — but the
+   knight on d4 was one move from Nxc2, which forks the rook, and with the
+   knight still on b1 the rook had no square to run to. Clearing b1 was the
+   whole point of the move. The search had already found Nxc2 as Black's best
+   reply, so the desk contradicted its own engine to tell a player who read the
+   position correctly that they had imagined it.
+
+   "Not attacked yet" and "not in danger" are different claims, and only the
+   second one earns Phantom threat. */
+{
+  // after 7...Nxd4: Nb1 boxes the rook in, and Nxc2 is coming
+  const fen = 'r1b1k1nr/pppp1ppp/8/4N3/3nP3/8/PPP2KPP/RNB2B1R w kq - 0 8';
+
+  const alg = require('../src/engine.js').algebraic;
+  const trapped = new Position(fen);
+  trapped.moveSan('Be2');                 // leave the knight on b1
+  trapped.moveSan('Nxc2');
+  assert.strictEqual(
+    trapped.withSideToMove('w').generateMoves().filter(m => alg(m.from) === 'a1').length, 0,
+    'with the knight still on b1 the forked rook must have nowhere to go');
+
+  const after = new Position(fen);
+  after.moveSan('Nc3');
+  const looseAfter = after.hangingFor('w').map(p => ({ square: p.name, type: p.type, gain: p.gain }));
+  const v = verifyIntention(
+    { color: 'w', fenBefore: fen, fenAfter: after.fen(), from: 'b1', to: 'c3',
+      captured: null, looseAfter, tags: [] },
+    { kind: 'protect', target: 'a1' });
+  assert.strictEqual(v.verdict, 'foreseen_threat',
+    'clearing the rook\'s only flight square is not a phantom threat: ' + v.detail);
+  assert.ok(/Nxc2/.test(v.detail), 'the verdict should name the threat it credits: ' + v.detail);
+  console.log('  ok   a threat one move out is credited, not called imaginary');
+
+  // ...and a piece nothing can reach still earns the phantom verdict
+  const quiet = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+  const q = new Position(quiet);
+  q.moveSan('e5');
+  const v2 = verifyIntention(
+    { color: 'b', fenBefore: quiet, fenAfter: q.fen(), from: 'e7', to: 'e5',
+      captured: null, looseAfter: [], tags: [] },
+    { kind: 'protect', target: 'a8' });
+  assert.strictEqual(v2.verdict, 'phantom_threat',
+    'a rook nothing can reach is still a phantom threat: ' + v2.detail);
+  console.log('  ok   a piece nothing can reach is still a phantom threat');
+}
