@@ -392,7 +392,15 @@ function verifyIntention(ply, intention) {
   // analyzeGame drops it from the blunder candidates for the same reason;
   // reading looseAfter raw here would call every recapture a hung piece.
   // looseAfter is sorted by gain, so the first survivor is the worst one.
-  const hungSomething = ply.looseAfter.find(l => !(l.square === ply.to && ply.captured)) || null;
+  // ...and a piece that was already loose before the move was not left hanging
+  // BY the move. analyzeGame draws this line for the move verdict — it tags the
+  // ply "still loose" rather than "became loose" — but the intention check read
+  // looseAfter raw and blamed the player's reasoning for a weakness they
+  // inherited. Saving an attacked knight is not tunnel vision because a pawn
+  // the knight never defended is still hanging afterwards.
+  const alreadyLoose = new Set(before.hangingFor(me).map(p => p.name));
+  const hungSomething = ply.looseAfter.find(l =>
+    !(l.square === ply.to && ply.captured) && !alreadyLoose.has(l.square)) || null;
 
   if (intention.kind === 'protect') {
     const sq = SQUARES[target];

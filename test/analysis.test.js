@@ -219,3 +219,53 @@ console.log('\nall attack-verdict and check-evasion checks passed');
             'see() clamps at zero, so an equal trade must not be called a loss');
   console.log('  ok   a defended piece names the pieces defending it');
 }
+
+/* Tunnel vision has to mean the move caused it.
+
+   Reported from a real game: the knight on c2 was attacked by Nd4, the player
+   moved it to b4, and the desk called it tunnel vision because a pawn on e4
+   was hanging afterwards. But e4 was already hanging before the move, and the
+   knight on c2 never defended it — c2 covers a1, a3, b4, d4, e1 and e3, not
+   e4. The move could not have caused that weakness, and the move verdict
+   agreed: it tagged the ply "still loose", not "became loose".
+
+   So the intention check now subtracts what was already loose. Both halves
+   are pinned here: the inherited weakness must not be blamed on the move,
+   and a weakness the move really does create must still be caught. */
+{
+  const base = '6k1/pp3ppp/8/8/3Np3/8/PPn2PPP/4R1K1 b - - 0 1';
+  const after = new Position(base);
+  after.moveSan('Nb4');
+  const looseAfter = after.hangingFor('b').map(p => ({ square: p.name, type: p.type, gain: p.gain }));
+
+  // e4 was hanging before the move and the knight never defended it
+  assert.ok(new Position(base).hangingFor('b').some(p => p.name === 'e4'),
+            'the pawn on e4 should already be loose before the move');
+  const v = verifyIntention(
+    { color: 'b', fenBefore: base, fenAfter: after.fen(), from: 'c2', to: 'b4',
+      captured: null, looseAfter, tags: [] },
+    { kind: 'protect', target: 'c2' });
+  assert.strictEqual(v.verdict, 'sound',
+    'saving the knight is sound — e4 was loose before it moved: ' + v.detail);
+  console.log('  ok   a weakness that predates the move is not blamed on it');
+
+  // same shape, but now the knight is the only thing defending e3, so moving
+  // it genuinely does hang the bishop
+  // No pawn on f2 here: it would attack e3 too, and fxe3 wins a bishop for a
+  // pawn whatever the knight is doing, which makes e3 loose before the move.
+  // The king sits on h1 rather than g1 because emptying f2 opens the e3-g1
+  // diagonal, and a position with White already in check is not black to play.
+  const causes = '6k1/pp3ppp/8/8/3N4/4b3/PPn3PP/4R2K b - - 0 1';
+  assert.ok(!new Position(causes).hangingFor('b').some(p => p.name === 'e3'),
+            'the bishop on e3 should be held before the knight leaves');
+  const after2 = new Position(causes);
+  after2.moveSan('Nb4');
+  const loose2 = after2.hangingFor('b').map(p => ({ square: p.name, type: p.type, gain: p.gain }));
+  const v2 = verifyIntention(
+    { color: 'b', fenBefore: causes, fenAfter: after2.fen(), from: 'c2', to: 'b4',
+      captured: null, looseAfter: loose2, tags: [] },
+    { kind: 'protect', target: 'c2' });
+  assert.strictEqual(v2.verdict, 'tunnel_vision',
+    'abandoning the piece it was defending is still tunnel vision: ' + v2.detail);
+  console.log('  ok   a weakness the move does create is still caught');
+}
