@@ -722,6 +722,8 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
 }
 .side-flip:hover { color: var(--ink); text-decoration-color: var(--brass); }
 .side-guessed { color: var(--brass); }
+/* The one item on the subtitle that names something to go and study. */
+.opening { color: var(--ink-soft); font-style: italic; }
 .status.err { color: var(--critical); }
 .status.ok { color: var(--good); }
 
@@ -1629,6 +1631,13 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     sub.appendChild(flip);
     sub.appendChild(document.createTextNode(
       ` · ${r} · ${g.plies.length} plies` + (g.source === 'sample' ? ' · example data' : '')));
+    // The opening is the one thing on this line worth going and reading about,
+    // so it is named rather than left as the `book` grade's silent "early move".
+    const opening = openingOf(g.plies.map(p => p.san));
+    if (opening) {
+      sub.appendChild(document.createTextNode(' · '));
+      sub.appendChild(el('span', 'opening', opening));
+    }
 
     // The title rides a knight's path in when the game changes — never on an
     // ordinary step, which would make it furniture that twitches.

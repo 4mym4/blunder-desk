@@ -72,7 +72,7 @@ for (const name of ['searchBest', 'bestLine', 'findMotifs', 'isMateScore', 'eval
     console.error('MISSING in tactics bundle:', name); process.exit(1);
   }
 }
-for (const name of ['gradeFor', 'commentFor', 'describeMove']) {
+for (const name of ['gradeFor', 'commentFor', 'describeMove', 'openingOf']) {
   if (!new RegExp(`function\\s+${name}\\b`).test(commentary)) {
     console.error('MISSING in commentary bundle:', name); process.exit(1);
   }

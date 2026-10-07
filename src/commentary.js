@@ -19,6 +19,99 @@ const CSQUARES = C_ENG ? C_ENG.SQUARES : SQUARES;
 
 const NAME = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
 
+/* ---------- opening names ----------
+   The `book` grade only ever meant "early, and nothing was dropped" — it knew
+   no openings at all, so a player could not tell which one they were in or what
+   to go and read about. These are the lines an improving player actually meets,
+   keyed by the SAN that reaches them; longest match wins, so a variation names
+   itself without repeating its parent.
+
+   ponytail: a hand-kept list, not an ECO database. A full one is most of a
+   megabyte and this page ships as a single offline file, so the deal is broad
+   coverage of common play and silence everywhere else — a wrong name teaches a
+   wrong thing, so anything not listed stays unnamed. Add lines as they turn up. */
+const OPENINGS = {
+  // 1.e4 e5
+  'e4 e5': 'Open Game',
+  'e4 e5 Nf3 Nc6 Bb5': 'Ruy López',
+  'e4 e5 Nf3 Nc6 Bb5 a6': 'Ruy López, Morphy Defence',
+  'e4 e5 Nf3 Nc6 Bc4': 'Italian Game',
+  'e4 e5 Nf3 Nc6 Bc4 Bc5': 'Italian Game, Giuoco Piano',
+  'e4 e5 Nf3 Nc6 Bc4 Nf6': 'Two Knights Defence',
+  'e4 e5 Nf3 Nc6 d4': 'Scotch Game',
+  'e4 e5 Nf3 Nc6 Nc3': 'Four Knights Game',
+  'e4 e5 Nf3 Nf6': "Petrov's Defence",
+  'e4 e5 Nf3 d6': 'Philidor Defence',
+  'e4 e5 Nc3': 'Vienna Game',
+  'e4 e5 f4': "King's Gambit",
+  'e4 e5 Bc4': "Bishop's Opening",
+  'e4 e5 d4': 'Centre Game',
+  // 1.e4, everything else
+  'e4 c5': 'Sicilian Defence',
+  'e4 c5 Nf3 Nc6': 'Sicilian Defence, Old Sicilian',
+  'e4 c5 Nf3 e6': 'Sicilian Defence, French Variation',
+  'e4 c5 Nf3 d6': 'Sicilian Defence, Open',
+  'e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 a6': 'Sicilian Defence, Najdorf Variation',
+  'e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6 Nc3 Nc6': 'Sicilian Defence, Classical Variation',
+  'e4 c5 c3': 'Sicilian Defence, Alapin Variation',
+  'e4 c5 Nc3': 'Sicilian Defence, Closed',
+  'e4 c5 d4': 'Sicilian Defence, Smith-Morra Gambit',
+  'e4 e6': 'French Defence',
+  'e4 e6 d4 d5 Nc3 Bb4': 'French Defence, Winawer Variation',
+  'e4 e6 d4 d5 e5': 'French Defence, Advance Variation',
+  'e4 e6 d4 d5 exd5': 'French Defence, Exchange Variation',
+  'e4 c6': 'Caro-Kann Defence',
+  'e4 c6 d4 d5 e5': 'Caro-Kann Defence, Advance Variation',
+  'e4 c6 d4 d5 exd5': 'Caro-Kann Defence, Exchange Variation',
+  'e4 d5': 'Scandinavian Defence',
+  'e4 d6': 'Pirc Defence',
+  'e4 g6': 'Modern Defence',
+  'e4 Nf6': "Alekhine's Defence",
+  'e4 Nc6': 'Nimzowitsch Defence',
+  'e4 b6': "Owen's Defence",
+  'e4 d5 exd5 Qxd5': 'Scandinavian Defence, Main Line',
+  // 1.d4
+  'd4 d5': 'Closed Game',
+  'd4 d5 c4': "Queen's Gambit",
+  'd4 d5 c4 dxc4': "Queen's Gambit Accepted",
+  'd4 d5 c4 e6': "Queen's Gambit Declined",
+  'd4 d5 c4 c6': 'Slav Defence',
+  'd4 d5 Bf4': 'London System',
+  'd4 d5 Nf3 Nf6 Bf4': 'London System',
+  'd4 Nf6': 'Indian Defence',
+  'd4 Nf6 Bf4': 'London System',
+  'd4 Nf6 c4 e6 Nc3 Bb4': 'Nimzo-Indian Defence',
+  'd4 Nf6 c4 e6 Nf3 b6': "Queen's Indian Defence",
+  'd4 Nf6 c4 g6 Nc3 Bg7': "King's Indian Defence",
+  'd4 Nf6 c4 g6 Nc3 d5': 'Grünfeld Defence',
+  'd4 Nf6 c4 c5': 'Benoni Defence',
+  'd4 Nf6 c4 e5': 'Budapest Gambit',
+  'd4 f5': 'Dutch Defence',
+  'd4 b6': 'English Defence',
+  'd4 e6': 'Horwitz Defence',
+  'd4 g6': 'Modern Defence',
+  // flank openings
+  'c4': 'English Opening',
+  'Nf3': 'Réti Opening',
+  'f4': "Bird's Opening",
+  'b3': "Larsen's Opening",
+  'g3': "King's Fianchetto Opening",
+  'b4': 'Polish Opening',
+  'Nc3': 'Dunst Opening'
+};
+
+// The deepest key there is, so the lookup never probes past the table.
+const OPENING_MAX = Math.max.apply(null, Object.keys(OPENINGS).map(k => k.split(' ').length));
+
+// The most specific opening name reached by a list of SAN moves, or null.
+function openingOf(sans) {
+  for (let n = Math.min(sans.length, OPENING_MAX); n > 0; n--) {
+    const hit = OPENINGS[sans.slice(0, n).join(' ')];
+    if (hit) return hit;
+  }
+  return null;
+}
+
 /* Grades, worst to best. `swing` is how much worse the move played was
    than the best the search found, in centipawns. */
 const GRADES = {
@@ -264,5 +357,5 @@ function describeMove(before, after, move, ply) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { gradeFor, commentFor, describeMove, GRADES, NAME };
+  module.exports = { gradeFor, commentFor, describeMove, openingOf, OPENINGS, GRADES, NAME };
 }
