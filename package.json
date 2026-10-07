@@ -9,7 +9,7 @@
     "build": "node build.js",
     "start": "node build.js && node server/static.js",
     "proxy": "node server/proxy.js",
-    "test": "node build.js && node test/engine.test.js && node test/tactics.test.js && node test/analysis.test.js && node test/worker.test.js && node test/board.test.js && node test/sound.test.js && node test/game.test.js && node test/bestline.test.js && node test/review-layout.test.js && node test/openings.test.js",
+    "test": "node build.js && node test/engine.test.js && node test/tactics.test.js && node test/analysis.test.js && node test/worker.test.js && node test/board.test.js && node test/sound.test.js && node test/game.test.js && node test/bestline.test.js && node test/review-layout.test.js && node test/openings.test.js && node test/store.test.js",
     "test:engine": "node test/engine.test.js",
     "test:analysis": "node test/analysis.test.js",
     "test:tactics": "node test/tactics.test.js",

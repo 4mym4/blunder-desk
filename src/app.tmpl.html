@@ -2618,15 +2618,58 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     }
   }
 
-  /* ---------- storage ---------- */
+  /* ---------- storage ----------
+     What gets stored is the PGN, never the analysis: the verdicts are derived
+     and the code that derives them changes, so a cached verdict would be a
+     stale one shown confidently. Reloading re-reads the moves and re-grades
+     them, which is a second of background work and always current. */
+
+  /* The artifact document store is only there when the page is published as
+     one. Served anywhere else — GitHub Pages, `npm start` — there was no store
+     at all and nothing survived a reload. This is the same query surface over
+     localStorage, so the three functions below do not have to learn a second
+     backend.
+     ponytail: one key per collection, rewritten whole on every set. Fine for
+     the 60 games the loader asks for; move to IndexedDB if that cap ever
+     rises, since this serialises the lot on each write. */
+  function localStore() {
+    const read = n => {
+      try { return JSON.parse(localStorage.getItem('bd-store-' + n) || '{}'); }
+      catch (e) { return {}; }
+    };
+    // Deliberately not swallowed: a full quota means the game did NOT save,
+    // and persistGame's caller says so rather than leaving a silent gap.
+    const write = (n, v) => localStorage.setItem('bd-store-' + n, JSON.stringify(v));
+    return {
+      collection(name) {
+        let sort = null, cap = Infinity;
+        const api = {
+          orderBy(f, dir) { sort = [f, dir === 'desc' ? -1 : 1]; return api; },
+          limit(n) { cap = n; return api; },
+          async get() {
+            const rows = Object.values(read(name));
+            if (sort) rows.sort((a, b) => ((a[sort[0]] || 0) - (b[sort[0]] || 0)) * sort[1]);
+            return rows.slice(0, cap);
+          },
+          doc(id) {
+            return {
+              async set(obj) { const all = read(name); all[id] = obj; write(name, all); },
+              async delete() { const all = read(name); delete all[id]; write(name, all); }
+            };
+          }
+        };
+        return api;
+      }
+    };
+  }
+
   async function connectStore() {
     try {
-      const db = await window.claude?.use?.('db');
-      if (!db) { $('#store-note').textContent = 'Running without storage — games and tags last until you close the page.'; return; }
-      state.db = db;
-      $('#store-note').textContent = 'Games and move tags are saved to this page, so they are here next time.';
+      state.db = (await window.claude?.use?.('db')) || localStore();
+      $('#store-note').textContent = 'Games and move tags are saved in this browser, so they are here next time.';
       await loadStored();
     } catch (e) {
+      // Private browsing can make localStorage itself throw on read.
       $('#store-note').textContent = 'Running without storage — games and tags last until you close the page.';
     }
   }
@@ -2657,7 +2700,19 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
         if (data && data.key) state.intentions[data.key] = data;
       }
     } catch (e) { /* storage is optional */ }
+
+    // The sample game was the one on screen and has just been dropped, so the
+    // review pane is pointing at a game that no longer exists.
+    if (!state.games.some(g => g.id === state.currentId)) {
+      state.currentId = state.games[0] ? state.games[0].id : null;
+      state.ply = -1;
+    }
     renderGames(); renderPatterns(); renderReview(false);
+    // Only the PGN came back, so the grades have to be earned again — without
+    // this the restored game sits there ungraded until it is clicked, which
+    // reads exactly like the analysis was lost.
+    const open = current();
+    if (open) gradeInBackground(open);
   }
 
   async function persistGame(g) {
@@ -2666,7 +2721,11 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
       await state.db.collection('games').doc(g.id).set({
         gid: g.id, pgn: g.pgnText, source: g.source, heroColor: g.heroColor, at: Date.now()
       });
-    } catch (e) { /* storage is optional */ }
+    } catch (e) {
+      // A full quota is the likely cause, and silence would read as "saved".
+      $('#store-note').textContent =
+        'This browser is out of storage room — the game is loaded, but it will not be here next time.';
+    }
   }
 
   async function saveIntention(key, rec) {
