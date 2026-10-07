@@ -318,3 +318,55 @@ console.log('\nall attack-verdict and check-evasion checks passed');
     'a rook nothing can reach is still a phantom threat: ' + v2.detail);
   console.log('  ok   a piece nothing can reach is still a phantom threat');
 }
+
+/* Tactics get named, for both players.
+
+   The motif detector has always found forks, pins, skewers and discovered
+   attacks on every move of both sides. Nothing ever showed them: commentFor
+   names at most one, and only when it wins the single headline line, so a fork
+   and a pin in the same move left the pin invisible and the opponent's tactics
+   were never named at all. They are chips now, so a player can see the pattern
+   and go and read about it.
+
+   The gates are what is checked here, since they are the new logic: same rules
+   as the prose, so chip and sentence can never disagree. */
+{
+  const { gradeAll, applyGrade, TAGS } = require('../src/analysis.js');
+  const MOTIF = ['fork', 'pin', 'skewer', 'discovered'];
+
+  // Légal's Mate line — Black's bishop pins the f3 knight to the queen.
+  const g = analyzeGame(pp('1. e4 e5 2. Nf3 Nc6 3. Bc4 d6 4. Nc3 Bg4 5. h3 Bh5 ' +
+                           '6. Nxe5 Bxd1 7. Bxf7+ Ke7 8. Nd5#')[0], 'w');
+  gradeAll(g.plies, 3);
+  const pinned = g.plies.filter(p => p.tags.includes('pin'));
+  assert.ok(pinned.length, 'the bishop pin on the f3 knight should be named');
+  assert.ok(pinned.some(p => !p.isHero),
+            "the opponent's tactics must be named too, not just the player's");
+  console.log('  ok   a tactic by either player is named');
+
+  // every motif tag must have a label, or the chip renders blank
+  for (const t of MOTIF) assert.ok(TAGS[t] && TAGS[t].label, t + ' needs a label');
+  console.log('  ok   every motif tag has a chip label');
+
+  // the gates: a fork whose piece simply hangs is not one worth studying, and
+  // nothing is called a tactic on a move that turned out to cost material
+  const { motifTags, MOTIF_TAGS } = require('../src/analysis.js');
+  const ply = (fork, swing) => ({ swing, motifs: { fork, pins: [], skewers: [], discovered: null } });
+
+  assert.ok(motifTags(ply({ safe: true }, 0)).includes('fork'), 'a safe fork should be named');
+  assert.ok(!motifTags(ply({ safe: false }, 0)).includes('fork'),
+            'a fork whose piece simply hangs is not one worth studying');
+  assert.ok(!motifTags(ply({ safe: true }, 300)).includes('fork'),
+            'a move that cost material names no tactic');
+  assert.deepStrictEqual(motifTags({ swing: 0 }), [], 'a ply with no motifs names nothing');
+  console.log('  ok   a hanging fork and a costly move name no tactic');
+
+  // grading runs more than once over a ply, so the chip has to be given back
+  // rather than stacked — applyGrade rebuilds that slice of the tag list
+  const stale = { tags: ['fork', 'hung_piece'], swing: 300,
+                  motifs: { fork: { safe: true }, pins: [], skewers: [], discovered: null } };
+  stale.tags = stale.tags.filter(t => MOTIF_TAGS.indexOf(t) === -1).concat(motifTags(stale));
+  assert.deepStrictEqual(stale.tags, ['hung_piece'],
+    'a swing that grew past the gate must take the chip back and keep the rest');
+  console.log('  ok   re-grading takes the chip back instead of stacking it');
+}

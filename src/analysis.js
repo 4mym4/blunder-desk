@@ -34,8 +34,37 @@ const TAGS = {
   missed_mate:     { label: 'Missed mate in 1',   tone: 'warning'  },
   panic_move:      { label: 'Played fast',        tone: 'info'     },
   good_capture:    { label: 'Won material',       tone: 'good'     },
-  punished:        { label: 'Punished a hang',    tone: 'good'     }
+  punished:        { label: 'Punished a hang',    tone: 'good'     },
+  // Named patterns rather than verdicts, so they stay neutral in tone: a fork
+  // is the same thing to learn whoever played it.
+  fork:            { label: 'Fork',               tone: 'info'     },
+  pin:             { label: 'Pin',                tone: 'info'     },
+  skewer:          { label: 'Skewer',             tone: 'info'     },
+  discovered:      { label: 'Discovered attack',  tone: 'info'     }
 };
+
+/* These four name a pattern the player could go and read about; the rest of
+   TAGS judges the move. Several places need to tell the two apart. */
+const MOTIF_TAGS = ['fork', 'pin', 'skewer', 'discovered'];
+
+/* The motif detector has always found these, for both players, and nothing
+   ever showed them: commentFor names at most one and only when it wins the
+   headline, so a fork and a pin in the same move left the pin invisible and
+   the opponent's tactics were never named at all.
+
+   Same gates as the prose, so the chip and the sentence cannot disagree — a
+   fork whose piece simply hangs is not a fork worth studying, and nothing is
+   called a tactic on a move that turned out to cost material. */
+function motifTags(ply) {
+  const m = ply.motifs;
+  if (!m || (ply.swing != null && ply.swing >= 150)) return [];
+  const out = [];
+  if (m.fork && m.fork.safe) out.push('fork');
+  if (m.pins && m.pins.length) out.push('pin');
+  if (m.skewers && m.skewers.length) out.push('skewer');
+  if (m.discovered) out.push('discovered');
+  return out;
+}
 
 /* What the best move is actually for, in the only terms this engine can
    back: material and mate. The evaluation makes no positional claim, so
@@ -330,6 +359,10 @@ function applyGrade(ply, best, score, playedScore, refutation) {
     ply.missedTactic = ply.swing >= 70 && best !== ply.san;
     ply.bestIsMate = TAC.isMateScore(score);
   }
+
+  // Rebuilt rather than appended, because grading can run more than once over
+  // a ply and a swing that grew past the gate has to take its chip back.
+  ply.tags = ply.tags.filter(t => MOTIF_TAGS.indexOf(t) === -1).concat(motifTags(ply));
 
   // The search outranks the static pass. If taking the "free" piece is
   // worth almost nothing more than what was played, it was not actually
@@ -727,7 +760,10 @@ function pickIntentionPrompts(plies, limit = 5) {
   const hero = plies.filter(p => p.isHero);
   const bad = hero.filter(p => p.loss >= THRESH.MISTAKE).sort((a, b) => b.loss - a.loss);
   const good = hero.filter(p => p.loss === 0 && (p.tags.includes('punished') || p.tags.includes('good_capture')));
-  const neutral = hero.filter(p => p.loss === 0 && !p.tags.length);
+  // A move that merely named a pattern is still a quiet move to ask about —
+  // only the tags that judge the move disqualify it from the neutral pool.
+  const neutral = hero.filter(p => p.loss === 0 &&
+    !p.tags.some(t => MOTIF_TAGS.indexOf(t) === -1));
 
   const picked = [];
   const take = (arr, k) => { for (const x of arr.slice(0, k)) if (!picked.includes(x)) picked.push(x); };
@@ -741,5 +777,5 @@ function pickIntentionPrompts(plies, limit = 5) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { analyzeGame, explainBest, verifyIntention, pickIntentionPrompts, aggregate, gradePly, gradeAll, applyGrade, REFUTE_AT, recomment, TAGS, THRESH, PIECE_NAME, severityFor };
+  module.exports = { analyzeGame, explainBest, verifyIntention, pickIntentionPrompts, aggregate, gradePly, gradeAll, applyGrade, motifTags, MOTIF_TAGS, REFUTE_AT, recomment, TAGS, THRESH, PIECE_NAME, severityFor };
 }
