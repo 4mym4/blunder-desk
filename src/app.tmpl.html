@@ -1310,6 +1310,11 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
 17. Qxf3 { [%clk 0:07:00] } Rxf3 { [%clk 0:07:10] } 18. gxf3 { [%clk 0:06:50] } Rf8 { [%clk 0:07:00] }
 19. Ne2 { [%clk 0:06:40] } Rxf3 { [%clk 0:06:50] } 20. Nf4 { [%clk 0:06:38] } exf4 { [%clk 0:06:45] } 0-1`;
 
+  // Stamped into every cached analysis; the build derives it from the engine
+  // and the search, so it changes exactly when a stored grade could mean
+  // something different.
+  const ANALYSIS_V = /*__ANALYSIS_VERSION__*/;
+
   const INTENT_KINDS = [
     { kind: 'protect',     label: 'Protect a piece', needsTarget: 'own',   hint: 'Tap the piece you were trying to save.' },
     { kind: 'attack',      label: 'Attack a piece',  needsTarget: 'enemy', hint: 'Tap the piece you were going after. Their king counts — that is a check.' },
@@ -1637,6 +1642,20 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     if (opening) {
       sub.appendChild(document.createTextNode(' · '));
       sub.appendChild(el('span', 'opening', opening));
+    }
+    /* An analysis from an older build is kept and used — it cost real time and
+       is usually still right — but the offer to redo it has to be visible, or
+       "kept" quietly becomes "stale and unmarked". */
+    if (g.staleAnalysis) {
+      const again = el('button', 'btn btn-sm restale', 'Re-analyse');
+      again.title = 'This game was analysed by an earlier version of the desk.';
+      again.addEventListener('click', () => {
+        g.graded = false; g.staleAnalysis = false;
+        again.disabled = true;
+        gradeInBackground(g);
+      });
+      sub.appendChild(document.createTextNode(' · '));
+      sub.appendChild(again);
     }
 
     // The title rides a knight's path in when the game changes — never on an
@@ -2513,7 +2532,9 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     game.stats = aggregate(game.plies, game.heroColor);
     game.graded = true;
     game.grading = false;
+    game.staleAnalysis = false;
     state.grading = false;
+    persistGrades(game);
     setProgress(game, total, total);
     if (state.currentId === game.id) renderReview(false);
     renderGames(); renderPatterns();
@@ -2676,6 +2697,17 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
 
   async function loadStored() {
     if (!state.db) return;
+    // Pulled up front so each restored game can claim its own without a
+    // round trip per game.
+    const cached = {};
+    try {
+      const snap = await state.db.collection('grades').limit(60).get();
+      for (const d of (snap?.docs ?? snap ?? [])) {
+        const data = typeof d.data === 'function' ? d.data() : d;
+        if (data && data.gid) cached[data.gid] = data;
+      }
+    } catch (e) { /* the analysis cache is optional */ }
+
     try {
       const snap = await state.db.collection('games').orderBy('at', 'desc').limit(60).get();
       const docs = snap?.docs ?? snap ?? [];
@@ -2688,6 +2720,7 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
         const g = buildGame(parsed, data.source || 'stored', { color: data.heroColor });
         if (g.error) continue;
         g.id = data.gid;
+        restoreGrades(g, cached[data.gid]);
         state.games = state.games.filter(x => x.source !== 'sample');
         state.games.push(g);
       }
@@ -2711,8 +2744,9 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     // Only the PGN came back, so the grades have to be earned again — without
     // this the restored game sits there ungraded until it is clicked, which
     // reads exactly like the analysis was lost.
+    // Only what the cache could not supply.
     const open = current();
-    if (open) gradeInBackground(open);
+    if (open && !open.graded) gradeInBackground(open);
   }
 
   async function persistGame(g) {
@@ -2726,6 +2760,38 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
       $('#store-note').textContent =
         'This browser is out of storage room — the game is loaded, but it will not be here next time.';
     }
+  }
+
+  /* Grading a game costs a few seconds of search per game, which is the one
+     thing in here worth not paying twice. Only the search results are kept —
+     four values a ply — and restoring replays them through applyGrade, so the
+     tags and the wording come from today's code either way.
+
+     An analysis from an older build is still restored rather than dropped: it
+     took real time to produce and is usually still right. It is flagged, and
+     the review pane offers to run it again. */
+  async function persistGrades(g) {
+    if (!state.db || g.source === 'sample' || !g.pgnText) return;
+    try {
+      await state.db.collection('grades').doc(g.id).set({
+        gid: g.id, v: ANALYSIS_V, at: Date.now(),
+        g: g.plies.map(p => p.gradeInput || null)
+      });
+    } catch (e) { /* a cache, so losing it costs time rather than data */ }
+  }
+
+  function restoreGrades(g, rec) {
+    // A different ply count means this record belongs to different moves.
+    if (!rec || !Array.isArray(rec.g) || rec.g.length !== g.plies.length) return false;
+    for (let i = 0; i < g.plies.length; i++) {
+      const s = rec.g[i];
+      if (!Array.isArray(s)) return false;
+      applyGrade(g.plies[i], s[0], s[1], s[2], s[3]);
+    }
+    g.stats = aggregate(g.plies, g.heroColor);
+    g.graded = true;
+    g.staleAnalysis = rec.v !== ANALYSIS_V;
+    return true;
   }
 
   async function saveIntention(key, rec) {

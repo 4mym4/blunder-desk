@@ -350,6 +350,13 @@ const REFUTE_AT = 150;
    own. Split out so the browser can run the search in a worker and still
    share this bookkeeping with the Node path below. */
 function applyGrade(ply, best, score, playedScore, refutation) {
+  /* The four numbers the search cost ~150ms to find. Everything below is
+     derived from them, so keeping just these is enough to rebuild a whole
+     game's analysis without searching again — and replaying them through this
+     same function means the wording and the tags come out of today's code
+     rather than out of a cache. Recorded here because this is the one point
+     both the worker and the synchronous fallback pass through. */
+  ply.gradeInput = [best, score, playedScore, refutation || null];
   ply.searchBest = best;
   ply.bestSan = best;
   if (playedScore != null && score != null) {

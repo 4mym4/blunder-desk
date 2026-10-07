@@ -50,7 +50,17 @@ const shimC = [                       // module objects, used by analysis
   'const COM = { describeMove, gradeFor, commentFor, GRADES, NAME };'
 ].join('\n');
 
+/* What a cached analysis is stamped with. Only the engine and the search decide
+   what a stored grade means — everything downstream is replayed through today's
+   code when the cache is restored — so hashing those two is what distinguishes
+   "this analysis is still valid" from "offer to run it again". Computed rather
+   than hand-bumped, because a version constant someone has to remember to raise
+   is one they will forget to raise. */
+const searchStamp = require('crypto').createHash('sha256')
+  .update(engine).update(tactics).digest('hex').slice(0, 12);
+
 let html = fs.readFileSync(path.join(SRC, 'app.tmpl.html'), 'utf8');
+html = html.replace('/*__ANALYSIS_VERSION__*/', () => JSON.stringify(searchStamp));
 html = html.replace('/*__ENGINE__*/', () => engine);
 html = html.replace('/*__SHIM_A__*/', () => shimA);
 html = html.replace('/*__TACTICS__*/', () => tactics);
@@ -77,7 +87,7 @@ for (const name of ['gradeFor', 'commentFor', 'describeMove', 'openingOf']) {
     console.error('MISSING in commentary bundle:', name); process.exit(1);
   }
 }
-for (const marker of ['__ENGINE__', '__TACTICS__', '__COMMENTARY__',
+for (const marker of ['__ENGINE__', '__TACTICS__', '__COMMENTARY__', '__ANALYSIS_VERSION__',
                       '__SHIM_A__', '__SHIM_B__', '__SHIM_C__', '__ANALYSIS__']) {
   if (html.includes(marker)) { console.error('build marker left unreplaced:', marker); process.exit(1); }
 }

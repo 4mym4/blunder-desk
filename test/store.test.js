@@ -135,3 +135,76 @@ ok('unreadable storage reads as empty instead of throwing', async () => {
 process.on('exit', () => {
   console.log(`\n${passed} passed` + (process.exitCode ? ', some failed' : ', 0 failed'));
 });
+
+/* ---------- the analysis cache ----------
+
+   Grading costs a few seconds of search per game, and a reload used to pay it
+   again every time. Only the four values the search produces are stored — a
+   cached verdict would be a stale one shown confidently, so everything
+   downstream is replayed through today's applyGrade instead.
+
+   The rule that matters most is the one about not throwing work away: an
+   analysis stamped by an older build is still restored, because it cost real
+   time and is usually still right. It is flagged, and the review pane offers
+   to run it again. Dropping it would be the behaviour that makes people give
+   up on the app. */
+
+const { analyzeGame, gradeAll, applyGrade, aggregate } = require('../src/analysis.js');
+const { parsePgn } = require('../src/engine.js');
+
+const restoreSrc = (html.match(/\n  function restoreGrades\(g, rec\) \{[\s\S]*?\n  \}\n/) || [])[0];
+assert.ok(restoreSrc, 'restoreGrades not found in the built page');
+
+const PGN = '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Bg5 e6 1-0';
+const freshGame = () => analyzeGame(parsePgn(PGN)[0], 'w');
+
+function restorer(version) {
+  const sandbox = { applyGrade, aggregate, ANALYSIS_V: version, Array };
+  vm.createContext(sandbox);
+  vm.runInContext(restoreSrc + '\nthis.restoreGrades = restoreGrades;', sandbox);
+  return sandbox.restoreGrades;
+}
+
+// one real analysis, to be cached and restored
+const analysed = freshGame();
+gradeAll(analysed.plies, 3);
+const record = { gid: 'g', v: 'v1', g: analysed.plies.map(p => p.gradeInput) };
+const expected = analysed.plies.map(p => p.grade).join(',');
+
+console.log('\nthe analysis cache:');
+
+ok('a restored analysis grades every ply the same as the search did', () => {
+  const g = freshGame();
+  assert.ok(g.plies.every(p => p.grade == null), 'a fresh game starts ungraded');
+  assert.strictEqual(restorer('v1')(g, record), true);
+  assert.strictEqual(g.plies.map(p => p.grade).join(','), expected,
+                     'the cache must reproduce the search exactly');
+  assert.strictEqual(g.graded, true, 'and the game should not be graded again');
+});
+
+ok('an analysis from an older build is kept, and flagged rather than dropped', () => {
+  const g = freshGame();
+  assert.strictEqual(restorer('v2')(g, record), true, 'an old analysis is still restored');
+  assert.strictEqual(g.plies.map(p => p.grade).join(','), expected, 'and is not thrown away');
+  assert.strictEqual(g.staleAnalysis, true, 'but it is flagged so the pane can offer to redo it');
+});
+
+ok('a current analysis is not flagged', () => {
+  const g = freshGame();
+  restorer('v1')(g, record);
+  assert.strictEqual(g.staleAnalysis, false);
+});
+
+ok('a record for different moves is refused rather than misapplied', () => {
+  const g = freshGame();
+  const short = { gid: 'g', v: 'v1', g: record.g.slice(0, 3) };
+  assert.strictEqual(restorer('v1')(g, short), false, 'a ply-count mismatch is a different game');
+  assert.ok(!g.graded, 'and must leave the game to be graded properly');
+});
+
+ok('a missing or malformed record is refused rather than throwing', () => {
+  assert.strictEqual(restorer('v1')(freshGame(), null), false);
+  assert.strictEqual(restorer('v1')(freshGame(), { v: 'v1' }), false);
+  const holes = { gid: 'g', v: 'v1', g: record.g.map((s, i) => (i === 2 ? null : s)) };
+  assert.strictEqual(restorer('v1')(freshGame(), holes), false, 'a hole is not a usable cache');
+});
