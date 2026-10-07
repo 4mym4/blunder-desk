@@ -1218,6 +1218,51 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     </div>
     <div class="card" id="games-list" style="overflow:hidden"></div>
     <p class="note" style="margin-top:10px" id="store-note"></p>
+
+    <div class="sect-head">
+      <h2>Sync across devices</h2>
+      <span class="note">optional — the desk works without it</span>
+    </div>
+    <div class="card import-card" id="sync-card">
+      <p class="note" id="sync-state">Games stay in this browser.</p>
+
+      <div id="sync-setup">
+        <p>Sync needs a Supabase project of your own — nothing is sent anywhere until you
+           connect one. Paste its URL and anon key; <code>docs/supabase.sql</code> in the
+           repo has the one table and the policies to run first.</p>
+        <input type="text" id="sync-url" placeholder="https://xxxx.supabase.co" autocomplete="off" spellcheck="false">
+        <input type="text" id="sync-key" placeholder="anon key" autocomplete="off" spellcheck="false">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn" id="sync-save">Connect</button>
+        </div>
+      </div>
+
+      <div id="sync-signin" hidden>
+        <p class="note">Two ways in. A Google account is recoverable; a sync code holds no
+           personal data at all, but whoever has the code has the games.</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" id="sync-google">Continue with Google</button>
+          <button class="btn" id="sync-new-code">Make a sync code</button>
+        </div>
+        <div class="side-pick" style="margin-top:4px">
+          <input type="text" id="sync-code-in" placeholder="or paste a sync code" autocomplete="off" spellcheck="false">
+          <button class="btn btn-sm" id="sync-use-code">Use</button>
+        </div>
+      </div>
+
+      <div id="sync-code-out" hidden>
+        <p class="note">Your sync code. Keep it somewhere safe — it is the only way back to
+           these games, and it cannot be recovered.</p>
+        <input type="text" id="sync-code-show" readonly onclick="this.select()">
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-sm" id="sync-now" hidden>Sync now</button>
+        <button class="btn btn-sm" id="sync-out" hidden>Disconnect</button>
+        <button class="btn btn-sm" id="sync-forget" hidden>Forget this project</button>
+      </div>
+      <div class="status" id="sync-status" role="status" aria-live="polite"></div>
+    </div>
   </section>
 
   <!-- ===================== PATTERNS ===================== -->
@@ -2684,11 +2729,118 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     };
   }
 
+  /* ---------- sync ----------
+     A third implementation of the same four-method store the artifact document
+     store and localStore already satisfy, so nothing that reads or writes a
+     document has to know which one it is talking to. PostgREST over fetch
+     rather than the Supabase client, because an upsert and a delete are one
+     request each and a CDN script is a dependency.
+
+     `owner` is the whole access model: an auth uid when signed in, or the hash
+     of a sync code when not. docs/supabase.sql holds the policies that make it
+     mean something — without them the anon key reaches nothing. */
+  function remoteStore(cfg, owner, token) {
+    const base = cfg.url.replace(/\/+$/, '') + '/rest/v1/bd_docs';
+    const headers = () => ({
+      'apikey': cfg.key,
+      'Authorization': 'Bearer ' + (token || cfg.key),
+      'Content-Type': 'application/json',
+      'x-sync-owner': owner
+    });
+    const qs = coll => `owner=eq.${encodeURIComponent(owner)}&coll=eq.${encodeURIComponent(coll)}`;
+    const check = async r => {
+      if (!r.ok) throw new Error('sync ' + r.status + ' ' + (await r.text()).slice(0, 120));
+      return r;
+    };
+    return {
+      collection(name) {
+        let sort = null, cap = 1000;
+        const api = {
+          orderBy(f, dir) { sort = f + '.' + (dir === 'desc' ? 'desc' : 'asc'); return api; },
+          limit(n) { cap = n; return api; },
+          async get() {
+            // Sorting and the cap are the server's job; `data` is the document.
+            const url = `${base}?${qs(name)}&select=data` +
+                        (sort ? `&order=${sort}` : '') + `&limit=${cap}`;
+            const r = await check(await fetch(url, { headers: headers() }));
+            return (await r.json()).map(row => row.data);
+          },
+          doc(id) {
+            return {
+              async set(obj) {
+                await check(await fetch(base + '?on_conflict=owner,coll,id', {
+                  method: 'POST',
+                  headers: { ...headers(), 'Prefer': 'resolution=merge-duplicates' },
+                  body: JSON.stringify({ owner, coll: name, id,
+                                         data: obj, at: obj.at || Date.now() })
+                }));
+              },
+              async delete() {
+                await check(await fetch(`${base}?${qs(name)}&id=eq.${encodeURIComponent(id)}`,
+                                        { method: 'DELETE', headers: headers() }));
+              }
+            };
+          }
+        };
+        return api;
+      }
+    };
+  }
+
+  /* Reconcile the browser's copy with the project's, newest write wins.
+     ponytail: last-write-wins per document, no merge below that. It holds here
+     because the documents are not co-edited — a game's PGN never changes once
+     imported, an analysis is a cache, and an intention is one person answering
+     one prompt. It would not hold for anything two devices edit at once. */
+  async function mergeStores(localDb, remoteDb, collections) {
+    let pushed = 0, pulled = 0;
+    for (const coll of collections) {
+      const [mine, theirs] = await Promise.all([
+        localDb.collection(coll).limit(1000).get(),
+        remoteDb.collection(coll).limit(1000).get()
+      ]);
+      const keyOf = d => d.gid || d.key;
+      const byKey = new Map();
+      for (const d of mine) if (keyOf(d)) byKey.set(keyOf(d), { mine: d });
+      for (const d of theirs) {
+        if (!keyOf(d)) continue;
+        const e = byKey.get(keyOf(d)) || {};
+        e.theirs = d; byKey.set(keyOf(d), e);
+      }
+      for (const [id, e] of byKey) {
+        const a = e.mine, b = e.theirs;
+        if (a && !b) { await remoteDb.collection(coll).doc(id).set(a); pushed++; }
+        else if (b && !a) { await localDb.collection(coll).doc(id).set(b); pulled++; }
+        else if ((a.at || 0) > (b.at || 0)) { await remoteDb.collection(coll).doc(id).set(a); pushed++; }
+        else if ((b.at || 0) > (a.at || 0)) { await localDb.collection(coll).doc(id).set(b); pulled++; }
+      }
+    }
+    return { pushed, pulled };
+  }
+
+  // 20 random bytes, read as a bearer credential by the policies. Grouped only
+  // so it can be read off a screen and typed on a phone.
+  function makeSyncCode() {
+    const b = new Uint8Array(20);
+    crypto.getRandomValues(b);
+    const s = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+    return (s.match(/.{1,8}/g) || []).join('-');
+  }
+
+  async function ownerOfCode(code) {
+    const bytes = new TextEncoder().encode('blunder-desk:' + code.trim());
+    const hash = await crypto.subtle.digest('SHA-256', bytes);
+    return [...new Uint8Array(hash)].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+
   async function connectStore() {
     try {
       state.db = (await window.claude?.use?.('db')) || localStore();
       $('#store-note').textContent = 'Games and move tags are saved in this browser, so they are here next time.';
       await loadStored();
+      // A configured project takes over from here and re-loads what it merged.
+      wireSync();
+      await resumeSync();
     } catch (e) {
       // Private browsing can make localStorage itself throw on read.
       $('#store-note').textContent = 'Running without storage — games and tags last until you close the page.';
@@ -2792,6 +2944,149 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     g.graded = true;
     g.staleAnalysis = rec.v !== ANALYSIS_V;
     return true;
+  }
+
+  /* ---------- sync wiring ----------
+     Three things are remembered: which project, and either a session or a sync
+     code. All optional — none of it set means the desk runs on localStorage
+     exactly as it did before sync existed. */
+  const SYNC = {
+    read(k, d) { try { return localStorage.getItem('bd-sync-' + k) || d; } catch (e) { return d; } },
+    write(k, v) {
+      try { v == null ? localStorage.removeItem('bd-sync-' + k) : localStorage.setItem('bd-sync-' + k, v); }
+      catch (e) { /* optional */ }
+    }
+  };
+  const syncCfg = () => {
+    const url = SYNC.read('url', ''), key = SYNC.read('key', '');
+    return url && key ? { url, key } : null;
+  };
+
+  function syncSay(msg, bad) {
+    const el = $('#sync-status');
+    el.className = 'status' + (bad ? ' err' : msg ? ' ok' : '');
+    el.textContent = msg || '';
+  }
+
+  /* Supabase returns the session in the URL fragment after a Google redirect.
+     It is taken out of the address bar immediately: a fragment is not sent to
+     any server, but it is in the history and over the user's shoulder. */
+  function claimAuthRedirect() {
+    if (!location.hash.includes('access_token')) return null;
+    const p = new URLSearchParams(location.hash.slice(1));
+    const token = p.get('access_token');
+    history.replaceState(null, '', location.pathname + location.search);
+    return token;
+  }
+
+  // The uid is in the JWT's payload, which is base64url and not a secret.
+  function uidFromToken(token) {
+    try {
+      const body = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(body)).sub || null;
+    } catch (e) { return null; }
+  }
+
+  async function connectSync(owner, token, how) {
+    const cfg = syncCfg();
+    if (!cfg || !owner) return false;
+    const remote = remoteStore(cfg, owner, token);
+    try {
+      syncSay('Syncing…');
+      const local = state.db && !state.remote ? state.db : localStore();
+      const { pushed, pulled } = await mergeStores(local, remote, ['games', 'grades', 'intentions']);
+      state.db = remote;
+      state.remote = true;
+      syncSay(`Synced — ${pushed} up, ${pulled} down.`);
+      renderSync(how);
+      await loadStored();
+      return true;
+    } catch (e) {
+      // A failed sync must not strand the games: the browser store still has them.
+      syncSay(e.message.indexOf('sync 4') === 0
+        ? 'The project rejected that — check the key, and that docs/supabase.sql has been run.'
+        : 'Could not reach the project. Your games are still here in this browser.', true);
+      renderSync(null);
+      return false;
+    }
+  }
+
+  function renderSync(how) {
+    const cfg = syncCfg();
+    $('#sync-setup').hidden = !!cfg;
+    $('#sync-signin').hidden = !cfg || !!how;
+    $('#sync-forget').hidden = !cfg;
+    $('#sync-now').hidden = !how;
+    $('#sync-out').hidden = !how;
+    $('#sync-state').textContent = !cfg
+      ? 'Games stay in this browser.'
+      : how === 'google' ? 'Signed in with Google — these games follow you to any device.'
+      : how === 'code' ? 'Synced with a code — paste it on another device to see these games.'
+      : 'Project connected. Choose how to sign in.';
+    if (cfg) { $('#sync-url').value = cfg.url; $('#sync-key').value = cfg.key; }
+  }
+
+  async function resumeSync() {
+    const cfg = syncCfg();
+    if (!cfg) { renderSync(null); return; }
+    const fresh = claimAuthRedirect();
+    if (fresh) { SYNC.write('token', fresh); }
+    const token = SYNC.read('token', '');
+    const code = SYNC.read('code', '');
+    if (token) {
+      const uid = uidFromToken(token);
+      // An expired token leaves the uid readable but every request refused, so
+      // the failure path below is what the user actually sees.
+      if (uid && await connectSync(uid, token, 'google')) return;
+      SYNC.write('token', null);
+    }
+    if (code) { await connectSync(await ownerOfCode(code), null, 'code'); return; }
+    renderSync(null);
+  }
+
+  function wireSync() {
+    $('#sync-save').addEventListener('click', async () => {
+      const url = $('#sync-url').value.trim().replace(/\/+$/, '');
+      const key = $('#sync-key').value.trim();
+      if (!/^https:\/\/[\w.-]+$/.test(url) || key.length < 20) {
+        return syncSay('That does not look like a project URL and anon key.', true);
+      }
+      SYNC.write('url', url); SYNC.write('key', key);
+      syncSay('Project saved. Now choose how to sign in.');
+      renderSync(null);
+    });
+    $('#sync-forget').addEventListener('click', () => {
+      for (const k of ['url', 'key', 'token', 'code']) SYNC.write(k, null);
+      state.db = localStore(); state.remote = false;
+      syncSay('Project forgotten. Games stay in this browser.');
+      renderSync(null);
+    });
+    $('#sync-google').addEventListener('click', () => {
+      const cfg = syncCfg();
+      if (!cfg) return;
+      const back = location.origin + location.pathname;
+      location.href = `${cfg.url}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(back)}`;
+    });
+    $('#sync-new-code').addEventListener('click', async () => {
+      const code = makeSyncCode();
+      SYNC.write('code', code);
+      $('#sync-code-show').value = code;
+      $('#sync-code-out').hidden = false;
+      await connectSync(await ownerOfCode(code), null, 'code');
+    });
+    $('#sync-use-code').addEventListener('click', async () => {
+      const code = $('#sync-code-in').value.trim();
+      if (code.length < 8) return syncSay('That code looks too short.', true);
+      SYNC.write('code', code);
+      await connectSync(await ownerOfCode(code), null, 'code');
+    });
+    $('#sync-out').addEventListener('click', () => {
+      SYNC.write('token', null); SYNC.write('code', null);
+      state.db = localStore(); state.remote = false;
+      syncSay('Disconnected. Games stay in this browser.');
+      renderSync(null);
+    });
+    $('#sync-now').addEventListener('click', () => resumeSync());
   }
 
   async function saveIntention(key, rec) {

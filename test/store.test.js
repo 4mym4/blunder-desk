@@ -208,3 +208,132 @@ ok('a missing or malformed record is refused rather than throwing', () => {
   const holes = { gid: 'g', v: 'v1', g: record.g.map((s, i) => (i === 2 ? null : s)) };
   assert.strictEqual(restorer('v1')(freshGame(), holes), false, 'a hole is not a usable cache');
 });
+
+/* ---------- sync ----------
+
+   The network round trip needs a real Supabase project, so what is checked
+   here is everything up to the wire: the requests the store shapes, and the
+   merge that decides which copy of a document wins.
+
+   The merge is the part worth guarding. It is last-write-wins per document,
+   which holds only because these documents are not co-edited — a PGN never
+   changes once imported, an analysis is a cache, an intention is one person
+   answering one prompt. A rule that silently dropped the newer side would lose
+   real work, so both directions are pinned. */
+
+const remoteSrc = (html.match(/\n  function remoteStore\(cfg, owner, token\) \{[\s\S]*?\n  \}\n/) || [])[0];
+const mergeSrc  = (html.match(/\n  async function mergeStores\(localDb, remoteDb, collections\) \{[\s\S]*?\n  \}\n/) || [])[0];
+assert.ok(remoteSrc, 'remoteStore not found in the built page');
+assert.ok(mergeSrc, 'mergeStores not found in the built page');
+
+function remote(onRequest) {
+  const calls = [];
+  const sandbox = {
+    fetch: async (url, opt) => {
+      calls.push({ url, ...opt });
+      return onRequest ? onRequest(url, opt) : { ok: true, json: async () => [], text: async () => '' };
+    },
+    encodeURIComponent, JSON, Date, Promise, Map, Object, Error
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(remoteSrc + '\nthis.remoteStore = remoteStore;', sandbox);
+  return { db: sandbox.remoteStore({ url: 'https://p.supabase.co/', key: 'anon-key' }, 'OWNER', 'tok'), calls };
+}
+
+console.log('\nthe sync store:');
+
+ok('a read is scoped to this owner and this collection', async () => {
+  const { db, calls } = remote();
+  await db.collection('games').orderBy('at', 'desc').limit(60).get();
+  const u = calls[0].url;
+  assert.ok(u.includes('owner=eq.OWNER'), 'every read must be scoped to the owner: ' + u);
+  assert.ok(u.includes('coll=eq.games'), 'and to the collection: ' + u);
+  assert.ok(u.includes('order=at.desc') && u.includes('limit=60'), 'sort and cap belong to the server: ' + u);
+});
+
+ok('the credentials the policies rely on are sent', async () => {
+  const { db, calls } = remote();
+  await db.collection('games').limit(1).get();
+  const h = calls[0].headers;
+  assert.strictEqual(h['x-sync-owner'], 'OWNER', 'the sync-code policy reads this header');
+  assert.strictEqual(h.apikey, 'anon-key');
+  assert.strictEqual(h.Authorization, 'Bearer tok', 'a session token outranks the anon key');
+});
+
+ok('a write upserts rather than duplicating a document', async () => {
+  const { db, calls } = remote();
+  await db.collection('games').doc('g1').set({ gid: 'g1', pgn: '1. e4', at: 7 });
+  assert.strictEqual(calls[0].method, 'POST');
+  assert.ok(calls[0].url.includes('on_conflict=owner,coll,id'), 'the primary key is the conflict target');
+  assert.ok(/merge-duplicates/.test(calls[0].headers.Prefer), 'a second write must update, not insert');
+  const body = JSON.parse(calls[0].body);
+  assert.strictEqual(body.at, 7, 'the document timestamp drives the merge, so it is stored');
+  assert.deepStrictEqual(body.data, { gid: 'g1', pgn: '1. e4', at: 7 });
+});
+
+ok('a refusal is raised rather than silently read as empty', async () => {
+  const { db } = remote(() => ({ ok: false, status: 401, text: async () => 'no' }));
+  await assert.rejects(() => db.collection('games').limit(1).get(),
+    'a 401 must not look like a project with no games in it');
+});
+
+console.log('\nthe merge:');
+
+function fakeDb(rows) {
+  const store = new Map(rows.map(r => [r.gid || r.key, r]));
+  return {
+    store,
+    collection() {
+      const api = {
+        limit() { return api; }, orderBy() { return api; },
+        async get() { return [...store.values()]; },
+        doc(id) { return { async set(obj) { store.set(id, obj); } }; }
+      };
+      return api;
+    }
+  };
+}
+const merge = (() => {
+  const sandbox = { Promise, Map, Object };
+  vm.createContext(sandbox);
+  vm.runInContext(mergeSrc + '\nthis.mergeStores = mergeStores;', sandbox);
+  return sandbox.mergeStores;
+})();
+
+ok('a game only this device has is pushed up', async () => {
+  const l = fakeDb([{ gid: 'a', at: 1 }]), r = fakeDb([]);
+  const res = await merge(l, r, ['games']);
+  assert.strictEqual(res.pushed, 1); assert.strictEqual(res.pulled, 0);
+  assert.ok(r.store.has('a'), 'the other device must end up with it');
+});
+
+ok('a game only another device has is pulled down', async () => {
+  const l = fakeDb([]), r = fakeDb([{ gid: 'b', at: 1 }]);
+  const res = await merge(l, r, ['games']);
+  assert.strictEqual(res.pushed, 0); assert.strictEqual(res.pulled, 1);
+  assert.ok(l.store.has('b'), 'this device must end up with it');
+});
+
+ok('the newer copy wins, whichever side it is on', async () => {
+  const l = fakeDb([{ gid: 'a', at: 9, who: 'local' }]);
+  const r = fakeDb([{ gid: 'a', at: 2, who: 'remote' }]);
+  await merge(l, r, ['games']);
+  assert.strictEqual(r.store.get('a').who, 'local', 'the newer local copy should win');
+
+  const l2 = fakeDb([{ gid: 'a', at: 2, who: 'local' }]);
+  const r2 = fakeDb([{ gid: 'a', at: 9, who: 'remote' }]);
+  await merge(l2, r2, ['games']);
+  assert.strictEqual(l2.store.get('a').who, 'remote', 'and the newer remote copy should win');
+});
+
+ok('an identical document is left alone', async () => {
+  const l = fakeDb([{ gid: 'a', at: 5 }]), r = fakeDb([{ gid: 'a', at: 5 }]);
+  const q = await merge(l, r, ['games']);
+  assert.strictEqual(q.pushed, 0); assert.strictEqual(q.pulled, 0);
+});
+
+ok('intentions merge on their own key, not a game id', async () => {
+  const l = fakeDb([{ key: 'g__4', kind: 'protect', at: 3 }]), r = fakeDb([]);
+  await merge(l, r, ['intentions']);
+  assert.ok(r.store.has('g__4'), 'an intention is keyed by `key`');
+});
