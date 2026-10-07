@@ -5,3 +5,8 @@ dist/
 .vscode/
 .env
 .claude/
+
+# supabase sync setup — local only, never committed
+.supabase-db-password
+supabase/.temp/
+supabase/.branches/
