@@ -337,3 +337,57 @@ ok('intentions merge on their own key, not a game id', async () => {
   await merge(l, r, ['intentions']);
   assert.ok(r.store.has('g__4'), 'an intention is keyed by `key`');
 });
+
+/* ---------- the Google callback ----------
+
+   Everything the provider can send back arrives in the URL, and only one of
+   the three possibilities is a session. The other two used to return null,
+   which is indistinguishable from never having pressed the button — so a
+   misconfigured provider or an unlisted redirect URL would look like a dead
+   button with nothing in the console. Each is named now. */
+
+const claimSrc = (html.match(/\n  function claimAuthRedirect\(\) \{[\s\S]*?\n  \}\n/) || [])[0];
+assert.ok(claimSrc, 'claimAuthRedirect not found in the built page');
+
+function claim(search, hash) {
+  const replaced = [];
+  const sandbox = {
+    location: { search, hash, pathname: '/blunder-desk/' },
+    history: { replaceState: (a, b, url) => replaced.push(url) },
+    URLSearchParams
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(claimSrc + '\nthis.claimAuthRedirect = claimAuthRedirect;', sandbox);
+  return { out: sandbox.claimAuthRedirect(), replaced };
+}
+
+console.log('\nthe sign-in callback:');
+
+ok('a session is taken out of the address bar, not left in history', () => {
+  const { out, replaced } = claim('', '#access_token=AAA&refresh_token=BBB&token_type=bearer');
+  assert.strictEqual(out.token, 'AAA');
+  assert.strictEqual(out.refresh, 'BBB', 'the refresh token is what survives the hour');
+  assert.deepStrictEqual(replaced, ['/blunder-desk/'], 'the tokens must not stay in the URL');
+});
+
+ok('a refused sign-in says why instead of looking like a dead button', () => {
+  const { out } = claim('', '#error=server_error&error_description=Unsupported+provider');
+  assert.ok(out.error, 'an error must come back as an error');
+  assert.ok(/Unsupported provider/.test(out.error), 'and must carry what the provider said: ' + out.error);
+});
+
+ok('an error in the query string is caught too', () => {
+  const { out } = claim('?error=access_denied', '');
+  assert.ok(out.error && /access_denied/.test(out.error));
+});
+
+ok('a PKCE code is named rather than silently ignored', () => {
+  const { out } = claim('?code=abc123', '');
+  assert.ok(out.error && /PKCE/.test(out.error),
+            'a code this page cannot exchange should say so: ' + JSON.stringify(out));
+});
+
+ok('an ordinary page load is not mistaken for a callback', () => {
+  assert.strictEqual(claim('', '').out, null);
+  assert.strictEqual(claim('?tab=games', '#review').out, null);
+});

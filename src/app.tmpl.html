@@ -2980,11 +2980,49 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
      It is taken out of the address bar immediately: a fragment is not sent to
      any server, but it is in the history and over the user's shoulder. */
   function claimAuthRedirect() {
-    if (!location.hash.includes('access_token')) return null;
-    const p = new URLSearchParams(location.hash.slice(1));
-    const token = p.get('access_token');
-    history.replaceState(null, '', location.pathname + location.search);
-    return token;
+    const hash = new URLSearchParams(location.hash.slice(1));
+    const query = new URLSearchParams(location.search);
+    const clean = () => history.replaceState(null, '', location.pathname);
+
+    // Three things can come back from the provider and only one is a session.
+    // The other two used to return null, which looked exactly like never
+    // having clicked the button — the worst way for a sign-in to fail.
+    const err = hash.get('error_description') || hash.get('error') ||
+                query.get('error_description') || query.get('error');
+    if (err) { clean(); return { error: err.replace(/\+/g, ' ') }; }
+
+    // A project set to the PKCE flow answers with a code, and exchanging it
+    // needs a verifier this page never generated.
+    if (query.get('code')) {
+      clean();
+      return { error: 'the project is set to the PKCE flow, and the desk signs in with the implicit flow' };
+    }
+
+    const token = hash.get('access_token');
+    if (!token) return null;
+    clean();
+    return { token, refresh: hash.get('refresh_token') || '' };
+  }
+
+  /* An access token is good for about an hour. Without this, sync works right
+     after signing in and quietly stops later in the day, which reads as a bug
+     in the sync rather than an expiry. */
+  async function refreshSession(cfg) {
+    const rt = SYNC.read('refresh', '');
+    if (!rt) return null;
+    try {
+      const r = await fetch(cfg.url + '/auth/v1/token?grant_type=refresh_token', {
+        method: 'POST',
+        headers: { 'apikey': cfg.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: rt })
+      });
+      if (!r.ok) return null;
+      const j = await r.json();
+      if (!j.access_token) return null;
+      SYNC.write('token', j.access_token);
+      if (j.refresh_token) SYNC.write('refresh', j.refresh_token);
+      return j.access_token;
+    } catch (e) { return null; }
   }
 
   // The uid is in the JWT's payload, which is base64url and not a secret.
@@ -3040,15 +3078,23 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
     const cfg = syncCfg();
     if (!cfg) { renderSync(null); return; }
     const fresh = claimAuthRedirect();
-    if (fresh) { SYNC.write('token', fresh); }
+    if (fresh && fresh.error) {
+      syncSay('Google sign-in did not complete — ' + fresh.error, true);
+    } else if (fresh) {
+      SYNC.write('token', fresh.token);
+      SYNC.write('refresh', fresh.refresh);
+    }
     const token = SYNC.read('token', '');
     const code = SYNC.read('code', '');
     if (token) {
       const uid = uidFromToken(token);
-      // An expired token leaves the uid readable but every request refused, so
-      // the failure path below is what the user actually sees.
+      // An expired token still reads as a uid but every request is refused,
+      // so a refusal is a reason to refresh before it is a reason to give up.
       if (uid && await connectSync(uid, token, 'google')) return;
+      const renewed = await refreshSession(cfg);
+      if (renewed && await connectSync(uidFromToken(renewed), renewed, 'google')) return;
       SYNC.write('token', null);
+      SYNC.write('refresh', null);
     }
     if (code) { await connectSync(await ownerOfCode(code), null, 'code'); return; }
     renderSync(null);
@@ -3066,7 +3112,7 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
       renderSync(null);
     });
     $('#sync-forget').addEventListener('click', () => {
-      for (const k of ['url', 'key', 'token', 'code']) SYNC.write(k, null);
+      for (const k of ['url', 'key', 'token', 'refresh', 'code']) SYNC.write(k, null);
       state.db = localStore(); state.remote = false;
       syncSay('Project forgotten. Games stay in this browser.');
       renderSync(null);
@@ -3091,7 +3137,7 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
       await connectSync(await ownerOfCode(code), null, 'code');
     });
     $('#sync-out').addEventListener('click', () => {
-      SYNC.write('token', null); SYNC.write('code', null);
+      SYNC.write('token', null); SYNC.write('refresh', null); SYNC.write('code', null);
       state.db = localStore(); state.remote = false;
       syncSay('Disconnected. Games stay in this browser.');
       renderSync(null);
