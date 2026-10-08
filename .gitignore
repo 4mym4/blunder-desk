@@ -10,3 +10,6 @@ dist/
 .supabase-db-password
 supabase/.temp/
 supabase/.branches/
+
+# the deployed sync project, injected at build time
+sync.config.json

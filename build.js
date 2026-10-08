@@ -59,7 +59,30 @@ const shimC = [                       // module objects, used by analysis
 const searchStamp = require('crypto').createHash('sha256')
   .update(engine).update(tactics).digest('hex').slice(0, 12);
 
+/* The sync project, baked in rather than typed in. Setting up a Supabase
+   project is the owner's job, once; a player signing in on their phone should
+   see a button and nothing else. Env first so CI can inject repo secrets,
+   then a gitignored local file for working on it, then nothing — and nothing
+   is a page that never makes a request and never shows a sign-in button.
+
+   Both values are public by design: the anon key is meant to ship inside a
+   web page, and docs/supabase.sql is what actually keeps one player's rows
+   away from another's. */
+const syncLocal = (() => {
+  try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'sync.config.json'), 'utf8')); }
+  catch (e) { return {}; }
+})();
+const syncConfig = {
+  url: process.env.SUPABASE_URL || syncLocal.url || '',
+  key: process.env.SUPABASE_ANON_KEY || syncLocal.key || ''
+};
+if (syncConfig.url && !/^https:\/\/[\w.-]+$/.test(syncConfig.url)) {
+  console.error('SUPABASE_URL does not look like a project URL:', syncConfig.url);
+  process.exit(1);
+}
+
 let html = fs.readFileSync(path.join(SRC, 'app.tmpl.html'), 'utf8');
+html = html.replace('/*__SYNC_CONFIG__*/', () => JSON.stringify(syncConfig));
 html = html.replace('/*__ANALYSIS_VERSION__*/', () => JSON.stringify(searchStamp));
 html = html.replace('/*__ENGINE__*/', () => engine);
 html = html.replace('/*__SHIM_A__*/', () => shimA);
@@ -87,7 +110,7 @@ for (const name of ['gradeFor', 'commentFor', 'describeMove', 'openingOf']) {
     console.error('MISSING in commentary bundle:', name); process.exit(1);
   }
 }
-for (const marker of ['__ENGINE__', '__TACTICS__', '__COMMENTARY__', '__ANALYSIS_VERSION__',
+for (const marker of ['__ENGINE__', '__TACTICS__', '__COMMENTARY__', '__ANALYSIS_VERSION__', '__SYNC_CONFIG__',
                       '__SHIM_A__', '__SHIM_B__', '__SHIM_C__', '__ANALYSIS__']) {
   if (html.includes(marker)) { console.error('build marker left unreplaced:', marker); process.exit(1); }
 }

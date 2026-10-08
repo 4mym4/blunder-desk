@@ -39,8 +39,15 @@ jobs:
           node-version: '20'
 
       # Builds dist/index.html, then runs every suite against it.
+      # Set these once under Settings -> Secrets and variables -> Actions, as
+      # repository *variables* rather than secrets: both are public values that
+      # ship inside the page, and docs/supabase.sql is what keeps players' rows
+      # apart. Leave them unset and the page simply has no sync.
       - name: Test
         run: npm test
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
 
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1227,9 +1227,10 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
       <p class="note" id="sync-state">Games stay in this browser.</p>
 
       <div id="sync-setup">
-        <p>Sync needs a Supabase project of your own — nothing is sent anywhere until you
-           connect one. Paste its URL and anon key; <code>docs/supabase.sql</code> in the
-           repo has the one table and the policies to run first.</p>
+        <p>This copy of the desk was built without a sync project, so games stay in this
+           browser. If you are running it yourself, point it at a Supabase project —
+           <code>scripts/setup-sync.sh</code> sets one up, and anything pasted here is
+           for trying it out before baking it into the build.</p>
         <input type="text" id="sync-url" placeholder="https://xxxx.supabase.co" autocomplete="off" spellcheck="false">
         <input type="text" id="sync-key" placeholder="anon key" autocomplete="off" spellcheck="false">
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -2957,10 +2958,17 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
       catch (e) { /* optional */ }
     }
   };
+  /* Baked in by the build from the owner's project. A player never sees this
+     and never configures anything — they get a sign-in button. The typed-in
+     pair below it is only for working on the app before a project is wired
+     into the build, which is why it loses to the baked one. */
+  const SYNC_BUILT = /*__SYNC_CONFIG__*/;
   const syncCfg = () => {
+    if (SYNC_BUILT.url && SYNC_BUILT.key) return SYNC_BUILT;
     const url = SYNC.read('url', ''), key = SYNC.read('key', '');
     return url && key ? { url, key } : null;
   };
+  const syncIsBuilt = () => !!(SYNC_BUILT.url && SYNC_BUILT.key);
 
   function syncSay(msg, bad) {
     const el = $('#sync-status');
@@ -3013,17 +3021,19 @@ input[type=text]:focus, textarea:focus { outline: none; border-color: var(--bras
 
   function renderSync(how) {
     const cfg = syncCfg();
-    $('#sync-setup').hidden = !!cfg;
+    // The project setup belongs to whoever deploys the page, so it is only
+    // ever on screen when the build did not carry one.
+    $('#sync-setup').hidden = syncIsBuilt() || !!cfg;
     $('#sync-signin').hidden = !cfg || !!how;
-    $('#sync-forget').hidden = !cfg;
+    $('#sync-forget').hidden = syncIsBuilt() || !cfg;
     $('#sync-now').hidden = !how;
     $('#sync-out').hidden = !how;
     $('#sync-state').textContent = !cfg
       ? 'Games stay in this browser.'
       : how === 'google' ? 'Signed in with Google — these games follow you to any device.'
       : how === 'code' ? 'Synced with a code — paste it on another device to see these games.'
-      : 'Project connected. Choose how to sign in.';
-    if (cfg) { $('#sync-url').value = cfg.url; $('#sync-key').value = cfg.key; }
+      : 'Sign in to keep these games on every device you use.';
+    if (cfg && !syncIsBuilt()) { $('#sync-url').value = cfg.url; $('#sync-key').value = cfg.key; }
   }
 
   async function resumeSync() {
