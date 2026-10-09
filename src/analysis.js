@@ -527,13 +527,25 @@ function verifyIntention(ply, intention) {
       out.detail = `You saved the piece on ${target}, but your ${PIECE_NAME[hungSomething.type]} on ${hungSomething.square} is now hanging. Your scan stopped at the threatened square.`;
       return out;
     }
-    // was there a bigger problem elsewhere?
-    const bigger = before.hangingFor(me).find(p => p.name !== target && p.gain > before.see(sq, them));
-    if (bigger) {
+    /* Was there a bigger fish? It is not always one of yours. This only ever
+       looked at the player's own loose pieces, so a rook of theirs sitting
+       free — the larger miss, and the one the move verdict on the same screen
+       was already reporting — could not be named here. Defending correctly is
+       still the wrong move when something worth more was there for the taking,
+       and the player needs to be told which board to look at. */
+    const worth = before.see(sq, them);
+    const biggest = list => list.slice().sort((a, b) => b.gain - a.gain)[0] || null;
+    const ofMine = biggest(before.hangingFor(me).filter(p => p.name !== target));
+    const ofTheirs = biggest(before.hangingFor(them));
+    const takeable = ofTheirs && (!ofMine || ofTheirs.gain > ofMine.gain);
+    const bigger = takeable ? ofTheirs : ofMine;
+    if (bigger && bigger.gain > worth) {
       out.verdict = 'wrong_priority';
       out.label = 'Bigger fish';
       out.tone = 'warning';
-      out.detail = `Correct that ${target} was hanging, but your ${PIECE_NAME[bigger.type]} on ${bigger.name} was worth more and also loose.`;
+      out.detail = takeable
+        ? `Correct that ${target} was hanging — but their ${PIECE_NAME[bigger.type]} on ${bigger.name} was free and worth more. Taking it beat defending.`
+        : `Correct that ${target} was hanging, but your ${PIECE_NAME[bigger.type]} on ${bigger.name} was worth more and also loose.`;
       return out;
     }
     out.verdict = 'sound';

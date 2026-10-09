@@ -233,7 +233,13 @@ console.log('\nall attack-verdict and check-evasion checks passed');
    are pinned here: the inherited weakness must not be blamed on the move,
    and a weakness the move really does create must still be caught. */
 {
-  const base = '6k1/pp3ppp/8/8/3Np3/8/PPn2PPP/4R1K1 b - - 0 1';
+  // The knight on c2 is attacked by the rook on c1, and the pawn on e4 by the
+  // rook on e2. Neither white rook can be taken in reply — an earlier version
+  // of this fixture put one on e1, where the c2 knight forked it, so the
+  // position quietly contained free material and stopped testing what it says.
+  const base = '6k1/pp3ppp/8/8/4p3/8/PPn1R1PP/2R3K1 b - - 0 1';
+  assert.strictEqual(new Position(base).hangingFor('w').length, 0,
+                     'nothing of white\'s may be free here, or this tests the wrong branch');
   const after = new Position(base);
   after.moveSan('Nb4');
   const looseAfter = after.hangingFor('b').map(p => ({ square: p.name, type: p.type, gain: p.gain }));
@@ -369,4 +375,61 @@ console.log('\nall attack-verdict and check-evasion checks passed');
   assert.deepStrictEqual(stale.tags, ['hung_piece'],
     'a swing that grew past the gate must take the chip back and keep the rest');
   console.log('  ok   re-grading takes the chip back instead of stacking it');
+}
+
+/* The bigger fish is not always one of yours.
+
+   Reported from a real game. After 7.Ng5 the knight hit f7 AND the bishop on
+   e4, and the player answered with Bg6 — which really does cover f7 and really
+   does save the bishop. Their reading of the threat was exact: f7 held only by
+   the king, Nxf7 forking d8 and h8, and Kxf7 illegal because Bc4 covers the
+   square. All of that is true.
+
+   What they missed was the rook on h1, left free when the knight vacated f3,
+   and the desk could not say so: the check only looked at the player's own
+   loose pieces, so it named the bishop they had already saved while the move
+   verdict beside it said "their rook on h1 was free". Two cards, one position,
+   different advice.
+
+   Defending correctly is still the wrong move when something worth more was
+   there for the taking. */
+{
+  const { SQUARES: SQ, algebraic: alg2 } = require('../src/engine.js');
+  const fenBefore = 'rn1qkbnr/ppp2ppp/3p4/4p1N1/2B1b1PP/8/PPPP1P2/RNBQK2R b KQkq - 0 7';
+  const before = new Position(fenBefore);
+
+  // the player's reading of the position, confirmed before trusting the verdict
+  assert.deepStrictEqual(before.attackersTo(SQ.f7, 'b').map(alg2), ['e8'],
+                         'f7 really was held by the king alone');
+  const forked = new Position(fenBefore);
+  forked.moveSan('a6'); forked.moveSan('Nxf7');
+  assert.ok(!forked.withSideToMove('b').generateMoves()
+            .some(m => m.piece === 'k' && alg2(m.to) === 'f7'),
+            'and the king really could not take on f7');
+
+  const after = new Position(fenBefore);
+  after.moveSan('Bg6');
+  const looseAfter = after.hangingFor('b').map(p => ({ square: p.name, type: p.type, gain: p.gain }));
+  const v = verifyIntention(
+    { color: 'b', fenBefore, fenAfter: after.fen(), from: 'e4', to: 'g6',
+      captured: null, looseAfter, tags: [] },
+    { kind: 'protect', target: 'f7' });
+
+  assert.strictEqual(v.verdict, 'wrong_priority');
+  assert.ok(/rook on h1/.test(v.detail),
+            'the free rook is the bigger fish, not the bishop: ' + v.detail);
+  console.log('  ok   free enemy material outranks a loose piece of your own');
+
+  // ...and when nothing of theirs is free, it still names your own loose piece
+  const quiet = '4k3/5p2/8/8/7b/8/5PPP/4K2R b K - 0 1';
+  const q = new Position(quiet);
+  assert.strictEqual(q.hangingFor('w').length, 0, 'nothing of theirs is loose here');
+  const qa = new Position(quiet); qa.moveSan('Kf8');
+  const v2 = verifyIntention(
+    { color: 'b', fenBefore: quiet, fenAfter: qa.fen(), from: 'e8', to: 'f8',
+      captured: null, looseAfter: [], tags: [] },
+    { kind: 'protect', target: 'f7' });
+  assert.ok(!/free and worth more/.test(v2.detail),
+            'with nothing free to take, the verdict must not claim there was: ' + v2.detail);
+  console.log('  ok   with nothing of theirs free, the old reading still stands');
 }
